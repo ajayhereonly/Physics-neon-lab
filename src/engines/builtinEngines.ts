@@ -9,6 +9,7 @@ import {
   getCanvasPalette,
 } from '../utils/canvasHelpers';
 import { formatPhysicsNumber } from '../utils/mathParser';
+import { stepAndRenderExtendedSim } from './extendedEngines';
 
 export interface SimRenderContext {
   ctx: CanvasRenderingContext2D;
@@ -44,6 +45,12 @@ export function stepAndRenderBuiltinSim(rc: SimRenderContext): LiveSimTelemetry 
   }
 
   let telemetry: LiveSimTelemetry;
+  const extendedTelemetry = stepAndRenderExtendedSim(rc, palette);
+  if (extendedTelemetry) {
+    ctx.restore();
+    return extendedTelemetry;
+  }
+
   switch (simId) {
     case 'gravitation':
       telemetry = renderGravitation(rc, palette);

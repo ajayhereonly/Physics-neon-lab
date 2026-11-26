@@ -16,14 +16,21 @@ export function FormulaSheetView({
   onLaunchSimulation,
 }: FormulaSheetViewProps) {
   const [search, setSearch] = useState('');
+  const [classFilter, setClassFilter] = useState<'all' | 'Class 11' | 'Class 12'>('all');
   const q = search.trim().toLowerCase();
 
   const filtered = allSimulations.filter((sim) => {
+    if (classFilter !== 'all') {
+      const ch = CHAPTERS.find((c) => c.id === sim.chapterId);
+      if (!ch || ch.classLevel !== classFilter) return false;
+    }
     if (!q) return true;
+    const ch = CHAPTERS.find((c) => c.id === sim.chapterId);
     return (
       sim.title.en.toLowerCase().includes(q) ||
       sim.title.hi.includes(q) ||
-      sim.formulaDisplay.toLowerCase().includes(q)
+      sim.formulaDisplay.toLowerCase().includes(q) ||
+      (ch && (ch.name.en.toLowerCase().includes(q) || ch.name.hi.includes(q)))
     );
   });
 
@@ -32,7 +39,10 @@ export function FormulaSheetView({
       return sim.chapterName ? getBilingualPrimary(sim.chapterName, language) : 'Custom Lab';
     }
     const ch = CHAPTERS.find((c) => c.id === sim.chapterId);
-    return ch ? `${ch.number}. ${getBilingualPrimary(ch.name, language)}` : '';
+    if (!ch) return '';
+    return `${ch.number}. ${getBilingualPrimary(ch.name, language)} · ${ch.classLevel}${
+      sim.supports3D ? ' · 3D' : ''
+    }`;
   };
 
   return (
@@ -41,25 +51,44 @@ export function FormulaSheetView({
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-black dark:text-white">
             {language === 'hi'
-              ? 'मास्टर भौतिकी फ़ॉर्मूला शीट'
-              : 'Master Physics Formula Sheet'}
+              ? 'मास्टर भौतिकी फ़ॉर्मूला शीट (कक्षा 11–12)'
+              : 'Master Physics Formula Sheet (Class 11–12)'}
           </h1>
           <p className="mt-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-300">
             {language === 'hi'
-              ? 'हर सूत्र के सामने दिए गए बटन से तुरंत उसका लाइव सिमुलेशन खोलें।'
-              : 'Every core Class 11–12 formula linked directly to its interactive live classroom simulation.'}
+              ? 'हर सूत्र के सामने दिए गए बटन से तुरंत उसका लाइव 2D/3D सिमुलेशन खोलें।'
+              : 'All 29 NCERT Class 11–12 chapter formulas linked directly to live 2D and 3D classroom simulations.'}
           </p>
         </div>
 
-        <div className="relative w-full md:w-80">
-          <Search className="w-4 h-4 text-black dark:text-white absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={getBilingualPrimary(UI_TEXT.searchPlaceholder, language)}
-            className="w-full pl-10 pr-4 py-2.5 text-sm font-medium rounded-xl border-2 border-black dark:border-white bg-white dark:bg-black text-black dark:text-white placeholder:text-neutral-500 dark:placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
-          />
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-1 p-1 rounded-lg border-2 border-black dark:border-white">
+            {(['all', 'Class 11', 'Class 12'] as const).map((lvl) => (
+              <button
+                key={lvl}
+                type="button"
+                onClick={() => setClassFilter(lvl)}
+                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors whitespace-nowrap cursor-pointer ${
+                  classFilter === lvl
+                    ? 'bg-black text-white dark:bg-white dark:text-black'
+                    : 'text-black dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900'
+                }`}
+              >
+                {lvl === 'all' ? (language === 'hi' ? 'सभी' : 'All') : lvl}
+              </button>
+            ))}
+          </div>
+
+          <div className="relative w-full sm:w-72">
+            <Search className="w-4 h-4 text-black dark:text-white absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={getBilingualPrimary(UI_TEXT.searchPlaceholder, language)}
+              className="w-full pl-10 pr-4 py-2 text-sm font-medium rounded-xl border-2 border-black dark:border-white bg-white dark:bg-black text-black dark:text-white placeholder:text-neutral-500 dark:placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
+            />
+          </div>
         </div>
       </div>
 

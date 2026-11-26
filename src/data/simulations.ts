@@ -1,29 +1,61 @@
 import { ChapterInfo, PhysicsSimulation } from '../types/physics';
+import { EXTRA_SIMULATIONS } from './simulationsExtra';
 
 export const CHAPTERS: ChapterInfo[] = [
+  // ================= CLASS 11 (15 CHAPTERS) =================
   {
-    id: 'gravitation',
+    id: 'units-measurements',
     number: '01',
     classLevel: 'Class 11',
-    name: { en: 'Gravitation & Orbits', hi: 'गुरुत्वाकर्षण और कक्षीय गति' },
+    name: { en: 'Units & Measurements', hi: 'मात्रक और मापन' },
     summary: {
-      en: 'Newton’s Universal Law of Gravitation, inverse-square force, and satellite orbits.',
-      hi: 'न्यूटन का सार्वत्रिक गुरुत्वाकर्षण नियम, व्युत्क्रम-वर्ग बल और उपग्रह कक्षाएँ।',
+      en: 'SI units, Vernier least count, dimensional analysis, and error propagation.',
+      hi: 'SI मात्रक, वर्नियर अल्पतमांक, विमीय विश्लेषण और त्रुटि संचरण।',
+    },
+  },
+  {
+    id: 'motion-1d',
+    number: '02',
+    classLevel: 'Class 11',
+    name: { en: 'Motion in a Straight Line', hi: 'सरल रेखा में गति' },
+    summary: {
+      en: 'Uniformly accelerated 1D kinematics, v–t / s–t graphs, and braking motion.',
+      hi: 'एकसमान त्वरित एकविमीय गति, v–t तथा s–t ग्राफ और गति के समीकरण।',
+    },
+  },
+  {
+    id: 'kinematics',
+    number: '03',
+    classLevel: 'Class 11',
+    name: { en: 'Motion in a Plane (Projectile)', hi: 'समतल में गति (प्रक्षेप्य गति)' },
+    summary: {
+      en: '2D parabolic trajectories, horizontal range, peak height, and velocity vectors.',
+      hi: 'द्विविमीय परवलयाकार पथ, क्षैतिज परास, अधिकतम ऊँचाई और वेग सदिश।',
     },
   },
   {
     id: 'laws-of-motion',
-    number: '02',
+    number: '04',
     classLevel: 'Class 11',
-    name: { en: 'Laws of Motion & Force', hi: 'गति के नियम और बल' },
+    name: { en: 'Laws of Motion & Friction', hi: 'गति के नियम और घर्षण' },
     summary: {
       en: 'Newton’s 2nd Law, friction, incline components, and live free-body diagrams.',
       hi: 'न्यूटन का दूसरा नियम, घर्षण, आनत तल और सजीव मुक्त-पिंड आरेख (FBD)।',
     },
   },
   {
+    id: 'work-energy',
+    number: '05',
+    classLevel: 'Class 11',
+    name: { en: 'Work, Energy & Power', hi: 'कार्य, ऊर्जा और शक्ति' },
+    summary: {
+      en: 'Live exchange between Kinetic Energy (½mv²) and Potential Energy (mgh).',
+      hi: 'गतिज ऊर्जा (½mv²) और स्थितिज ऊर्जा (mgh) के बीच सजीव रूपांतरण।',
+    },
+  },
+  {
     id: 'momentum',
-    number: '03',
+    number: '06',
     classLevel: 'Class 11',
     name: { en: 'Linear Momentum & Collisions', hi: 'रैखिक संवेग और टक्कर' },
     summary: {
@@ -33,37 +65,77 @@ export const CHAPTERS: ChapterInfo[] = [
   },
   {
     id: 'rotational',
-    number: '04',
+    number: '07',
     classLevel: 'Class 11',
-    name: { en: 'Rotational Motion & Angular Momentum', hi: 'घूर्णन गति और कोणीय संवेग' },
+    name: { en: 'System of Particles & Rotational Motion', hi: 'कणों के निकाय तथा घूर्णी गति' },
     summary: {
-      en: 'Moment of inertia, angular velocity, torque, and conservation of L = Iω.',
-      hi: 'जड़त्व आघूर्ण, कोणीय वेग, बल आघूर्ण और L = Iω का संरक्षण।',
+      en: '3D gyroscopic moment of inertia, angular velocity, torque, and conservation of L = Iω.',
+      hi: '3D जड़त्व आघूर्ण, कोणीय वेग, बल आघूर्ण और L = Iω का संरक्षण।',
     },
   },
   {
-    id: 'kinematics',
-    number: '05',
+    id: 'gravitation',
+    number: '08',
     classLevel: 'Class 11',
-    name: { en: 'Kinematics & Projectile Motion', hi: 'गतिकी और प्रक्षेप्य गति' },
+    name: { en: 'Gravitation & Orbits', hi: 'गुरुत्वाकर्षण और कक्षीय गति' },
     summary: {
-      en: '2D parabolic trajectories, horizontal range, peak height, and velocity vectors.',
-      hi: 'द्विविमीय परवलयाकार पथ, क्षैतिज परास, अधिकतम ऊँचाई और वेग सदिश।',
+      en: '3D Newton’s Universal Law of Gravitation, inverse-square force, and satellite orbits.',
+      hi: '3D न्यूटन का सार्वत्रिक गुरुत्वाकर्षण नियम, व्युत्क्रम-वर्ग बल और उपग्रह कक्षाएँ।',
     },
   },
   {
-    id: 'work-energy',
-    number: '06',
+    id: 'solids-elasticity',
+    number: '09',
     classLevel: 'Class 11',
-    name: { en: 'Work, Energy & Power', hi: 'कार्य, ऊर्जा और शक्ति' },
+    name: { en: 'Mechanical Properties of Solids', hi: 'ठोसों के यांत्रिक गुण (प्रत्यास्थता)' },
     summary: {
-      en: 'Live exchange between Kinetic Energy (½mv²) and Potential Energy (mgh).',
-      hi: 'गतिज ऊर्जा (½mv²) और स्थितिज ऊर्जा (mgh) के बीच सजीव रूपांतरण।',
+      en: 'Hooke’s Law, Young’s modulus Y, tensile stress–strain curves, and elastic energy.',
+      hi: 'हुक का नियम, यंग का प्रत्यास्थता गुणांक, प्रतिबल-विकृति वक्र और प्रत्यास्थ ऊर्जा।',
+    },
+  },
+  {
+    id: 'fluids',
+    number: '10',
+    classLevel: 'Class 11',
+    name: { en: 'Mechanical Properties of Fluids', hi: 'तरलों के यांत्रिक गुण (बर्नौली)' },
+    summary: {
+      en: 'Continuity equation A₁v₁ = A₂v₂, Bernoulli’s principle, and Venturi pressure drop.',
+      hi: 'सांतत्य समीकरण, बर्नौली का सिद्धांत और वेंचुरीमीटर में दाबांतर।',
+    },
+  },
+  {
+    id: 'thermal-matter',
+    number: '11',
+    classLevel: 'Class 11',
+    name: { en: 'Thermal Properties of Matter', hi: 'द्रव्य के तापीय गुण' },
+    summary: {
+      en: 'Linear thermal expansion ΔL = L₀αΔT and Fourier steady-state heat conduction.',
+      hi: 'रेखीय ऊष्मीय प्रसार ΔL = L₀αΔT और स्थायी अवस्था ऊष्मा चालन।',
+    },
+  },
+  {
+    id: 'thermodynamics',
+    number: '12',
+    classLevel: 'Class 11',
+    name: { en: 'Thermodynamics', hi: 'ऊष्मागतिकी' },
+    summary: {
+      en: 'First Law ΔQ = ΔU + W, isothermal vs adiabatic P–V curves, and piston work.',
+      hi: 'ऊष्मागतिकी का प्रथम नियम, समतापी बनाम रुद्धोष्म प्रक्रम और P–V आरेख।',
+    },
+  },
+  {
+    id: 'kinetic-theory',
+    number: '13',
+    classLevel: 'Class 11',
+    name: { en: 'Kinetic Theory of Gases', hi: 'अणुगति सिद्धांत' },
+    summary: {
+      en: 'Ideal gas law PV = nRT, RMS molecular speed v_rms, and Maxwell speed distribution.',
+      hi: 'आदर्श गैस समीकरण PV = nRT, वर्ग माध्य मूल चाल और अणुओं की टक्कर।',
     },
   },
   {
     id: 'oscillations',
-    number: '07',
+    number: '14',
     classLevel: 'Class 11',
     name: { en: 'Oscillations & SHM', hi: 'दोलन और सरल आवर्त गति' },
     summary: {
@@ -73,7 +145,7 @@ export const CHAPTERS: ChapterInfo[] = [
   },
   {
     id: 'waves',
-    number: '08',
+    number: '15',
     classLevel: 'Class 11',
     name: { en: 'Waves & Superposition', hi: 'तरंगें और अध्यारोपण' },
     summary: {
@@ -81,33 +153,156 @@ export const CHAPTERS: ChapterInfo[] = [
       hi: 'तरंग वेग v = fλ, कलांतर, संपोषी और विनाशी व्यतिकरण।',
     },
   },
+
+  // ================= CLASS 12 (14 CHAPTERS) =================
   {
-    id: 'electricity',
-    number: '09',
+    id: 'electric-charges',
+    number: '16',
     classLevel: 'Class 12',
-    name: { en: 'Electrostatics & Electric Circuits', hi: 'स्थिरवैद्युतिकी और विद्युत परिपथ' },
+    name: { en: 'Electric Charges & Fields', hi: 'वैद्युत आवेश तथा क्षेत्र' },
     summary: {
-      en: 'Coulomb’s electrostatic force, electric field lines, Ohm’s Law, and circuit power.',
-      hi: 'कूलॉम का नियम, विद्युत क्षेत्र रेखाएँ, ओम का नियम और परिपथ शक्ति।',
+      en: '3D Coulomb’s electrostatic force, dipole field shells, and inverse-square law.',
+      hi: '3D कूलॉम का नियम, विद्युत द्विध्रुव क्षेत्र और व्युत्क्रम-वर्ग बल।',
     },
   },
   {
-    id: 'magnetism-optics',
-    number: '10',
+    id: 'capacitance',
+    number: '17',
     classLevel: 'Class 12',
-    name: { en: 'Magnetism & Ray Optics', hi: 'चुंबकत्व और किरण प्रकाशिकी' },
+    name: { en: 'Electrostatic Potential & Capacitance', hi: 'स्थिरवैद्युत विभव तथा धारिता' },
     summary: {
-      en: 'Lorentz magnetic force cyclotron motion and thin lens ray tracing.',
-      hi: 'लॉरेंत्ज़ चुंबकीय बल (साइक्लोट्रॉन गति) और पतले लेंस का किरण आरेख।',
+      en: 'Parallel-plate capacitor C = κε₀A/d, dielectric slabs, and stored electrostatic energy.',
+      hi: 'समांतर प्लेट संधारित्र, परावैद्युत पट्टी का प्रभाव और संचित ऊर्जा U = ½CV²।',
+    },
+  },
+  {
+    id: 'current-electricity',
+    number: '18',
+    classLevel: 'Class 12',
+    name: { en: 'Current Electricity', hi: 'विद्युत धारा (ओम का नियम)' },
+    summary: {
+      en: 'Ohm’s Law V = IR, drift current visualization, Joule heating, and circuit power.',
+      hi: 'ओम का नियम V = IR, धारा प्रवाह, जूल तापन और विद्युत शक्ति।',
+    },
+  },
+  {
+    id: 'moving-charges',
+    number: '19',
+    classLevel: 'Class 12',
+    name: { en: 'Moving Charges & Magnetism', hi: 'गतिमान आवेश और चुंबकत्व' },
+    summary: {
+      en: '3D Helical Lorentz force F = q(v × B) and cyclotron radius r = mv/(qB).',
+      hi: '3D सर्पिलाकार लॉरेंत्ज़ बल F = q(v × B) और साइक्लोट्रॉन कक्षा।',
+    },
+  },
+  {
+    id: 'magnetism-matter',
+    number: '20',
+    classLevel: 'Class 12',
+    name: { en: 'Magnetism & Matter', hi: 'चुंबकत्व एवं द्रव्य' },
+    summary: {
+      en: 'Bar magnet dipole torque τ = MB·sinθ, dipole potential energy, and oscillation.',
+      hi: 'छड़ चुंबक पर बल आघूर्ण τ = MB·sinθ, द्विध्रुव स्थितिज ऊर्जा और दोलन।',
+    },
+  },
+  {
+    id: 'emi',
+    number: '21',
+    classLevel: 'Class 12',
+    name: { en: 'Electromagnetic Induction (EMI)', hi: 'वैद्युतचुंबकीय प्रेरण' },
+    summary: {
+      en: '3D AC generator coil, Faraday’s Law ε = −NdΦ/dt, and Lenz’s opposing flux.',
+      hi: '3D प्रत्यावर्ती जनरेटर, फैराडे का नियम ε = −NdΦ/dt और लेंज़ का नियम।',
+    },
+  },
+  {
+    id: 'ac-circuits',
+    number: '22',
+    classLevel: 'Class 12',
+    name: { en: 'Alternating Current (AC Circuits)', hi: 'प्रत्यावर्ती धारा (LCR परिपथ)' },
+    summary: {
+      en: 'Series LCR impedance Z, phasor diagrams, power factor cosφ, and resonance f₀.',
+      hi: 'श्रेणी LCR प्रतिबाधा Z, फेज़र आरेख, शक्ति गुणांक और अनुनाद आवृत्ति f₀।',
+    },
+  },
+  {
+    id: 'em-waves',
+    number: '23',
+    classLevel: 'Class 12',
+    name: { en: 'Electromagnetic Waves', hi: 'वैद्युतचुंबकीय तरंगें' },
+    summary: {
+      en: '3D orthogonal transverse E ⊥ B ⊥ c wave propagation and refractive index speed c/n.',
+      hi: '3D परस्पर लंबवत E ⊥ B ⊥ c अनुप्रस्थ तरंग संचरण और अपवर्तनांक।',
+    },
+  },
+  {
+    id: 'ray-optics',
+    number: '24',
+    classLevel: 'Class 12',
+    name: { en: 'Ray Optics & Optical Instruments', hi: 'किरण प्रकाशिकी एवं प्रकाशिक यंत्र' },
+    summary: {
+      en: 'Thin lens formula 1/f = 1/v − 1/u, convex/concave ray tracing, and magnification.',
+      hi: 'पतले लेंस का सूत्र, उत्तल/अवतल लेंस किरण आरेख और आवर्धन।',
+    },
+  },
+  {
+    id: 'wave-optics',
+    number: '25',
+    classLevel: 'Class 12',
+    name: { en: 'Wave Optics (Interference)', hi: 'तरंग प्रकाशिकी (व्यतिकरण)' },
+    summary: {
+      en: 'Young’s Double Slit Experiment (YDSE), fringe width β = λD/d, and intensity peaks.',
+      hi: 'यंग का द्वि-स्लिट प्रयोग, फ्रिंज चौड़ाई β = λD/d और तीव्रता वितरण।',
+    },
+  },
+  {
+    id: 'dual-nature',
+    number: '26',
+    classLevel: 'Class 12',
+    name: { en: 'Dual Nature of Radiation & Matter', hi: 'विकिरण तथा द्रव्य की द्वैत प्रकृति' },
+    summary: {
+      en: 'Photoelectric effect K_max = hν − φ₀, threshold cutoff, and de Broglie wavelength.',
+      hi: 'प्रकाश-विद्युत प्रभाव, देहली आवृत्ति, निरोधी विभव और डी-ब्रॉग्ली तरंगदैर्घ्य।',
+    },
+  },
+  {
+    id: 'atoms',
+    number: '27',
+    classLevel: 'Class 12',
+    name: { en: 'Atoms (Bohr Model & Spectra)', hi: 'परमाणु (बोहर मॉडल और स्पेक्ट्रम)' },
+    summary: {
+      en: '3D Bohr quantized electron shells, energy levels −13.6/n² eV, and photon transitions.',
+      hi: '3D बोहर परमाणु कक्षाएँ, ऊर्जा स्तर −13.6/n² eV और स्पेक्ट्रमी रेखाएँ।',
+    },
+  },
+  {
+    id: 'nuclei',
+    number: '28',
+    classLevel: 'Class 12',
+    name: { en: 'Nuclei & Radioactivity', hi: 'नाभिक और रेडियोधर्मिता' },
+    summary: {
+      en: 'Exponential radioactive decay N = N₀(½)^(t/T½), half-life, and nuclear activity.',
+      hi: 'चरघातांकी रेडियोधर्मी क्षय, अर्ध-आयु T½ और नाभिकीय सक्रियता।',
+    },
+  },
+  {
+    id: 'semiconductors',
+    number: '29',
+    classLevel: 'Class 12',
+    name: { en: 'Semiconductor Electronics', hi: 'अर्धचालक इलेक्ट्रॉनिकी (P–N डायोड)' },
+    summary: {
+      en: 'P–N junction diode forward/reverse bias, depletion layer width, and I–V curve.',
+      hi: 'P–N संधि डायोड अग्र/पश्च बायस, अवक्षय परत और I–V अभिलाक्षणिक वक्र।',
     },
   },
 ];
 
-export const BUILTIN_SIMULATIONS: PhysicsSimulation[] = [
+const CORE_SIMULATIONS: PhysicsSimulation[] = [
   // 1. GRAVITATION
   {
     id: 'gravitation',
     chapterId: 'gravitation',
+    supports3D: true,
     title: {
       en: 'Universal Gravitation & Orbital Motion',
       hi: 'सार्वत्रिक गुरुत्वाकर्षण और कक्षीय गति',
@@ -454,6 +649,7 @@ export const BUILTIN_SIMULATIONS: PhysicsSimulation[] = [
   {
     id: 'angular-momentum',
     chapterId: 'rotational',
+    supports3D: true,
     title: {
       en: 'Conservation of Angular Momentum',
       hi: 'कोणीय संवेग संरक्षण (L = I·ω)',
@@ -989,7 +1185,8 @@ export const BUILTIN_SIMULATIONS: PhysicsSimulation[] = [
   // 9. COULOMB'S LAW & ELECTRIC FIELD
   {
     id: 'coulombs-law',
-    chapterId: 'electricity',
+    chapterId: 'electric-charges',
+    supports3D: true,
     title: {
       en: 'Coulomb’s Law & Electric Field',
       hi: 'कूलॉम का नियम और विद्युत क्षेत्र',
@@ -1090,7 +1287,7 @@ export const BUILTIN_SIMULATIONS: PhysicsSimulation[] = [
   // 10. OHM'S LAW & CIRCUIT POWER
   {
     id: 'ohms-law',
-    chapterId: 'electricity',
+    chapterId: 'current-electricity',
     title: {
       en: 'Ohm’s Law & Electric Power',
       hi: 'ओम का नियम और विद्युत शक्ति',
@@ -1181,7 +1378,8 @@ export const BUILTIN_SIMULATIONS: PhysicsSimulation[] = [
   // 11. LORENTZ MAGNETIC FORCE (CYCLOTRON)
   {
     id: 'lorentz-force',
-    chapterId: 'magnetism-optics',
+    chapterId: 'moving-charges',
+    supports3D: true,
     title: {
       en: 'Lorentz Magnetic Force & Cyclotron Path',
       hi: 'लॉरेंत्ज़ चुंबकीय बल और साइक्लोट्रॉन पथ',
@@ -1292,7 +1490,7 @@ export const BUILTIN_SIMULATIONS: PhysicsSimulation[] = [
   // 12. THIN LENS FORMULA & RAY OPTICS
   {
     id: 'thin-lens',
-    chapterId: 'magnetism-optics',
+    chapterId: 'ray-optics',
     title: {
       en: 'Thin Lens Formula & Ray Tracing',
       hi: 'पतले लेंस का सूत्र और किरण आरेख',
@@ -1391,6 +1589,13 @@ export const BUILTIN_SIMULATIONS: PhysicsSimulation[] = [
     graphYLabel: 'v (cm)',
   },
 ];
+
+// Order all 29 built-in simulations cleanly to match CHAPTERS order (Class 11 Ch 01–15 → Class 12 Ch 16–29)
+const ALL_RAW_SIMS: PhysicsSimulation[] = [...CORE_SIMULATIONS, ...EXTRA_SIMULATIONS];
+const chapterOrderMap = new Map(CHAPTERS.map((c, idx) => [c.id, idx]));
+export const BUILTIN_SIMULATIONS: PhysicsSimulation[] = [...ALL_RAW_SIMS].sort(
+  (a, b) => (chapterOrderMap.get(a.chapterId) ?? 999) - (chapterOrderMap.get(b.chapterId) ?? 999)
+);
 
 export function getDefaultParams(sim: PhysicsSimulation): Record<string, number> {
   const result: Record<string, number> = {};

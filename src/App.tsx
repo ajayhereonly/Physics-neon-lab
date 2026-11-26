@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Box,
   Compass,
   Contrast,
   Grid,
@@ -12,6 +13,7 @@ import {
   SkipForward,
 } from 'lucide-react';
 import { BUILTIN_SIMULATIONS, CHAPTERS, getDefaultParams } from './data/simulations';
+import { ALL_PRACTICE_QUESTIONS } from './data/questionBank';
 import {
   AppView,
   ChalkStroke,
@@ -25,9 +27,11 @@ import {
 } from './types/physics';
 import { getBilingualPrimary, getBilingualSecondary, UI_TEXT } from './utils/bilingual';
 import { SimulationCanvas } from './components/SimulationCanvas';
+import { Simulation3DCanvas } from './components/Simulation3DCanvas';
 import { LiveGraph } from './components/LiveGraph';
 import { ControlConceptDeck } from './components/ControlConceptDeck';
 import { ChapterExplorer } from './components/ChapterExplorer';
+import { PracticeBankView } from './components/PracticeBankView';
 import { CustomFormulaLab } from './components/CustomFormulaLab';
 import { FormulaSheetView } from './components/FormulaSheetView';
 import { ChalkboardToolbar } from './components/ChalkboardToolbar';
@@ -80,8 +84,15 @@ export default function App() {
   );
 
   const [params, setParams] = useState<Record<string, number>>(() =>
-    getDefaultParams(BUILTIN_SIMULATIONS[0])
+    getDefaultParams(
+      BUILTIN_SIMULATIONS.find((s) => s.id === 'gravitation') ?? BUILTIN_SIMULATIONS[0]
+    )
   );
+  const [use3D, setUse3D] = useState<boolean>(() => {
+    const init = BUILTIN_SIMULATIONS.find((s) => s.id === 'gravitation') ?? BUILTIN_SIMULATIONS[0];
+    return Boolean(init.default3D);
+  });
+  const [practiceChapterId, setPracticeChapterId] = useState<string>('gravitation');
   const [isPlaying, setIsPlaying] = useState(true);
   const [simSpeed, setSimSpeed] = useState<number>(1);
   const [showVectors, setShowVectors] = useState(true);
@@ -160,6 +171,10 @@ export default function App() {
       if (!target) return;
       setActiveSimId(target.id);
       setParams(getDefaultParams(target));
+      setUse3D(Boolean(target.default3D));
+      if (!target.isCustom) {
+        setPracticeChapterId(target.chapterId);
+      }
       setActiveProofId(null);
       setStrokes([]);
       setIsPlaying(true);
@@ -167,6 +182,22 @@ export default function App() {
       setView('simulation');
     },
     [allSimulations]
+  );
+
+  const openPracticeForChapter = useCallback((chapterId: string) => {
+    setIsPresenterMode(false);
+    setPracticeChapterId(chapterId);
+    setView('practice');
+  }, []);
+
+  const launchChapterSimulation = useCallback(
+    (chapterId: string) => {
+      const target = BUILTIN_SIMULATIONS.find((s) => s.chapterId === chapterId);
+      if (target) {
+        selectSimulation(target.id);
+      }
+    },
+    [selectSimulation]
   );
 
   const handleParamChange = useCallback((key: string, value: number) => {
@@ -234,6 +265,7 @@ export default function App() {
       setCustomSimulations((prev) => [newSim, ...prev]);
       setActiveSimId(newSim.id);
       setParams(getDefaultParams(newSim));
+      setUse3D(false);
       setActiveProofId(null);
       setStrokes([]);
       setIsPlaying(true);
@@ -294,15 +326,16 @@ export default function App() {
             PhysicaLive
           </button>
 
-          {/* Zone 2: 4 Clean Single-Line Nav Links */}
+          {/* Zone 2: 5 Clean Single-Line Nav Links */}
           <nav
             aria-label="Primary Navigation"
-            className="hidden md:flex items-center gap-7 text-sm font-bold"
+            className="hidden md:flex items-center gap-6 text-sm font-bold"
           >
             {(
               [
                 { id: 'simulation', label: UI_TEXT.simulation },
                 { id: 'chapters', label: UI_TEXT.chapters },
+                { id: 'practice', label: UI_TEXT.practice },
                 { id: 'custom', label: UI_TEXT.customFormula },
                 { id: 'sheet', label: UI_TEXT.formulaSheet },
               ] as const
@@ -314,6 +347,9 @@ export default function App() {
                   type="button"
                   onClick={() => {
                     setIsPresenterMode(false);
+                    if (item.id === 'practice' && !activeSimulation.isCustom) {
+                      setPracticeChapterId(activeSimulation.chapterId);
+                    }
                     setView(item.id);
                   }}
                   className={`py-1.5 border-b-[3px] transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
@@ -361,6 +397,7 @@ export default function App() {
               [
                 { id: 'simulation', label: UI_TEXT.simulation },
                 { id: 'chapters', label: UI_TEXT.chapters },
+                { id: 'practice', label: UI_TEXT.practice },
                 { id: 'custom', label: UI_TEXT.customFormula },
                 { id: 'sheet', label: UI_TEXT.formulaSheet },
               ] as const
@@ -368,7 +405,12 @@ export default function App() {
               <button
                 key={item.id}
                 type="button"
-                onClick={() => setView(item.id)}
+                onClick={() => {
+                  if (item.id === 'practice' && !activeSimulation.isCustom) {
+                    setPracticeChapterId(activeSimulation.chapterId);
+                  }
+                  setView(item.id);
+                }}
                 className={`px-3 py-1 text-xs font-bold rounded-md whitespace-nowrap shrink-0 cursor-pointer ${
                   view === item.id
                     ? 'bg-black text-white dark:bg-white dark:text-black'
@@ -391,8 +433,17 @@ export default function App() {
             activeSimId={activeSimulation.id}
             language={language}
             onSelectSimulation={selectSimulation}
+            onOpenPractice={openPracticeForChapter}
             onDeleteCustom={handleDeleteCustom}
             onOpenCustomGenerator={() => setView('custom')}
+          />
+        )}
+
+        {view === 'practice' && !isPresenterMode && (
+          <PracticeBankView
+            initialChapterId={practiceChapterId}
+            language={language}
+            onLaunchChapterSim={launchChapterSimulation}
           />
         )}
 
@@ -597,6 +648,25 @@ export default function App() {
 
                   {/* Overlay Toggles */}
                   <div className="flex flex-wrap items-center gap-2">
+                    {activeSimulation.supports3D && (
+                      <button
+                        type="button"
+                        onClick={() => setUse3D((v) => !v)}
+                        className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg border-2 transition-colors whitespace-nowrap cursor-pointer ${
+                          use3D
+                            ? 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-black'
+                            : 'border-black dark:border-white bg-white dark:bg-black text-black dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900'
+                        }`}
+                      >
+                        <Box className="w-3.5 h-3.5" />
+                        <span>
+                          {use3D
+                            ? getBilingualPrimary(UI_TEXT.view3D, language)
+                            : getBilingualPrimary(UI_TEXT.view2D, language)}
+                        </span>
+                      </button>
+                    )}
+
                     <button
                       type="button"
                       onClick={() => setShowVectors((v) => !v)}
@@ -653,25 +723,47 @@ export default function App() {
                   />
                 )}
 
-                {/* 60fps Pure B&W Physics Canvas + Adaptive Chalkboard Overlay */}
-                <SimulationCanvas
-                  simulation={activeSimulation}
-                  params={params}
-                  isPlaying={isPlaying}
-                  simSpeed={simSpeed}
-                  showVectors={showVectors}
-                  showGrid={showGrid}
-                  theme={theme}
-                  resetToken={resetToken}
-                  stepToken={stepToken}
-                  isDrawing={isDrawing}
-                  drawTool={drawTool}
-                  drawTone={drawTone}
-                  strokes={strokes}
-                  onAddStroke={(stroke) => setStrokes((prev) => [...prev, stroke])}
-                  onTelemetry={setTelemetry}
-                  tall={isPresenterMode}
-                />
+                {/* 60fps Pure B&W Physics Canvas (2D or Interactive 3D Three.js Stage) + Chalkboard */}
+                {activeSimulation.supports3D && use3D ? (
+                  <Simulation3DCanvas
+                    simulation={activeSimulation}
+                    params={params}
+                    isPlaying={isPlaying}
+                    simSpeed={simSpeed}
+                    showVectors={showVectors}
+                    showGrid={showGrid}
+                    theme={theme}
+                    language={language}
+                    resetToken={resetToken}
+                    stepToken={stepToken}
+                    isDrawing={isDrawing}
+                    drawTool={drawTool}
+                    drawTone={drawTone}
+                    strokes={strokes}
+                    onAddStroke={(stroke) => setStrokes((prev) => [...prev, stroke])}
+                    onTelemetry={setTelemetry}
+                    tall={isPresenterMode}
+                  />
+                ) : (
+                  <SimulationCanvas
+                    simulation={activeSimulation}
+                    params={params}
+                    isPlaying={isPlaying}
+                    simSpeed={simSpeed}
+                    showVectors={showVectors}
+                    showGrid={showGrid}
+                    theme={theme}
+                    resetToken={resetToken}
+                    stepToken={stepToken}
+                    isDrawing={isDrawing}
+                    drawTool={drawTool}
+                    drawTone={drawTone}
+                    strokes={strokes}
+                    onAddStroke={(stroke) => setStrokes((prev) => [...prev, stroke])}
+                    onTelemetry={setTelemetry}
+                    tall={isPresenterMode}
+                  />
+                )}
 
                 {/* High-Contrast B&W Real-Time Graph */}
                 <LiveGraph
@@ -697,6 +789,7 @@ export default function App() {
                   onApplyParams={handleApplyParams}
                   onResetDefaults={handleResetDefaults}
                   onRunProof={handleRunProof}
+                  onOpenFullPractice={openPracticeForChapter}
                 />
               </div>
             </div>
@@ -712,7 +805,7 @@ export default function App() {
               PhysicaLive · High-Contrast Projector Edition (Class 11–12 Physics)
             </span>
             <span>
-              {BUILTIN_SIMULATIONS.length} Core Labs · {customSimulations.length} Saved Custom Labs
+              {CHAPTERS.length} Chapters (Class 11–12) · {ALL_PRACTICE_QUESTIONS.length} Practice Qs · 3D WebGL
             </span>
           </div>
         </footer>

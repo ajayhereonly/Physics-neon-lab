@@ -1,5 +1,15 @@
-import { useState } from 'react';
-import { Lightbulb, Play, RotateCcw } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  ArrowRight,
+  BookOpen,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Lightbulb,
+  Play,
+  RotateCcw,
+  XCircle,
+} from 'lucide-react';
 import {
   LanguageMode,
   LiveSimTelemetry,
@@ -7,7 +17,10 @@ import {
   ThemeMode,
   WhatIfPrompt,
 } from '../types/physics';
+import { getQuestionsByChapter } from '../data/questionBank';
 import { getBilingualPrimary, getBilingualSecondary, UI_TEXT } from '../utils/bilingual';
+
+const OPTION_LETTERS = ['A', 'B', 'C', 'D'];
 
 interface ControlConceptDeckProps {
   simulation: PhysicsSimulation;
@@ -20,6 +33,7 @@ interface ControlConceptDeckProps {
   onApplyParams: (nextParams: Record<string, number>) => void;
   onResetDefaults: () => void;
   onRunProof: (prompt: WhatIfPrompt) => void;
+  onOpenFullPractice?: (chapterId: string) => void;
 }
 
 export function ControlConceptDeck({
@@ -33,10 +47,27 @@ export function ControlConceptDeck({
   onApplyParams,
   onResetDefaults,
   onRunProof,
+  onOpenFullPractice,
 }: ControlConceptDeckProps) {
-  const [deckTab, setDeckTab] = useState<'whatif' | 'concept'>('whatif');
+  const [deckTab, setDeckTab] = useState<'whatif' | 'concept' | 'practice'>('whatif');
   const [revealedHints, setRevealedHints] = useState<Record<string, boolean>>({});
   const [revealedAnswers, setRevealedAnswers] = useState<Record<string, boolean>>({});
+  const [practiceIdx, setPracticeIdx] = useState(0);
+  const [practiceChoice, setPracticeChoice] = useState<Record<string, number>>({});
+  const [practiceHint, setPracticeHint] = useState<Record<string, boolean>>({});
+  const [practiceSol, setPracticeSol] = useState<Record<string, boolean>>({});
+
+  const chapterQuestions = useMemo(
+    () => (simulation.isCustom ? [] : getQuestionsByChapter(simulation.chapterId)),
+    [simulation.isCustom, simulation.chapterId]
+  );
+
+  useEffect(() => {
+    setPracticeIdx(0);
+    if (simulation.isCustom && deckTab === 'practice') {
+      setDeckTab('whatif');
+    }
+  }, [simulation.id, simulation.isCustom, deckTab]);
 
   const toggleHint = (id: string) => {
     setRevealedHints((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -183,13 +214,13 @@ export function ControlConceptDeck({
         </section>
       )}
 
-      {/* Teaching Deck: What-If Prompts & Concept Guide */}
+      {/* Teaching Deck: What-If Prompts, Concept Guide & Practice (12) */}
       <section className="rounded-xl border-2 border-black dark:border-white bg-white dark:bg-black overflow-hidden">
-        <div className="flex items-center gap-1.5 p-2 border-b-2 border-black dark:border-white">
+        <div className="flex items-center gap-1 p-2 border-b-2 border-black dark:border-white">
           <button
             type="button"
             onClick={() => setDeckTab('whatif')}
-            className={`flex-1 px-3 py-2 text-sm font-bold rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
+            className={`flex-1 px-2.5 py-2 text-xs sm:text-sm font-bold rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
               deckTab === 'whatif'
                 ? 'bg-black text-white dark:bg-white dark:text-black'
                 : 'text-black dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900'
@@ -200,7 +231,7 @@ export function ControlConceptDeck({
           <button
             type="button"
             onClick={() => setDeckTab('concept')}
-            className={`flex-1 px-3 py-2 text-sm font-bold rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
+            className={`flex-1 px-2.5 py-2 text-xs sm:text-sm font-bold rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
               deckTab === 'concept'
                 ? 'bg-black text-white dark:bg-white dark:text-black'
                 : 'text-black dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900'
@@ -208,6 +239,19 @@ export function ControlConceptDeck({
           >
             {getBilingualPrimary(UI_TEXT.conceptGuide, language)}
           </button>
+          {chapterQuestions.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setDeckTab('practice')}
+              className={`flex-1 px-2.5 py-2 text-xs sm:text-sm font-bold rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
+                deckTab === 'practice'
+                  ? 'bg-black text-white dark:bg-white dark:text-black'
+                  : 'text-black dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900'
+              }`}
+            >
+              {getBilingualPrimary(UI_TEXT.practiceTab, language)}
+            </button>
+          )}
         </div>
 
         <div className="p-5">
@@ -287,7 +331,7 @@ export function ControlConceptDeck({
                 );
               })}
             </div>
-          ) : (
+          ) : deckTab === 'concept' ? (
             <div className="space-y-4">
               <div>
                 <h4 className="text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1.5">
@@ -335,9 +379,197 @@ export function ControlConceptDeck({
                 )}
               </div>
             </div>
+          ) : (
+            (() => {
+              const safeIdx = Math.min(practiceIdx, Math.max(0, chapterQuestions.length - 1));
+              const q = chapterQuestions[safeIdx];
+              if (!q) return null;
+              const picked = practiceChoice[q.id];
+              const isAnswered = picked !== undefined;
+              const isCorrect = isAnswered && picked === q.correctIndex;
+              const showHint = !!practiceHint[q.id];
+              const showSol = !!practiceSol[q.id];
+
+              return (
+                <div className="space-y-4">
+                  {/* Question Stepper Header */}
+                  <div className="flex items-center justify-between gap-2 pb-3 border-b-2 border-neutral-300 dark:border-neutral-700">
+                    <div className="text-xs font-mono font-bold text-neutral-700 dark:text-neutral-300">
+                      Q{String(safeIdx + 1).padStart(2, '0')} / {chapterQuestions.length} · {q.difficulty}
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        disabled={safeIdx === 0}
+                        onClick={() => setPracticeIdx((i) => Math.max(0, i - 1))}
+                        aria-label="Previous question"
+                        className="p-1.5 rounded-lg border-2 border-black dark:border-white text-black dark:text-white disabled:opacity-30 hover:bg-neutral-100 dark:hover:bg-neutral-900 cursor-pointer disabled:cursor-not-allowed"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={safeIdx >= chapterQuestions.length - 1}
+                        onClick={() =>
+                          setPracticeIdx((i) => Math.min(chapterQuestions.length - 1, i + 1))
+                        }
+                        aria-label="Next question"
+                        className="p-1.5 rounded-lg border-2 border-black dark:border-white text-black dark:text-white disabled:opacity-30 hover:bg-neutral-100 dark:hover:bg-neutral-900 cursor-pointer disabled:cursor-not-allowed"
+                      >
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-bold text-black dark:text-white leading-snug">
+                      {getBilingualPrimary(q.question, language)}
+                    </p>
+                    {getBilingualSecondary(q.question, language) && (
+                      <p className="mt-1 text-xs font-medium text-neutral-700 dark:text-neutral-300 leading-relaxed">
+                        {q.question.hi}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Compact Options */}
+                  <div className="space-y-2">
+                    {q.options.map((opt, idx) => {
+                      const isThisPicked = picked === idx;
+                      const isThisCorrect = idx === q.correctIndex;
+                      let cls =
+                        'border-neutral-400 dark:border-neutral-600 text-black dark:text-white hover:border-black dark:hover:border-white';
+                      if (isAnswered) {
+                        if (isThisPicked && isThisCorrect) {
+                          cls =
+                            'border-black dark:border-white bg-black text-white dark:bg-white dark:text-black';
+                        } else if (isThisPicked && !isThisCorrect) {
+                          cls =
+                            'border-dashed border-black dark:border-white bg-neutral-100 dark:bg-neutral-900 text-black dark:text-white';
+                        } else if (isThisCorrect) {
+                          cls =
+                            'border-black dark:border-white bg-neutral-100 dark:bg-neutral-900 text-black dark:text-white';
+                        } else {
+                          cls =
+                            'border-neutral-300 dark:border-neutral-800 text-neutral-500';
+                        }
+                      }
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            setPracticeChoice((prev) => ({ ...prev, [q.id]: idx }));
+                            setPracticeSol((prev) => ({ ...prev, [q.id]: true }));
+                          }}
+                          className={`w-full text-left px-3 py-2 rounded-lg border-2 transition-colors flex items-start justify-between gap-2 cursor-pointer ${cls}`}
+                        >
+                          <div className="flex items-start gap-2 min-w-0">
+                            <span className="font-mono text-xs font-extrabold shrink-0">
+                              {OPTION_LETTERS[idx]}.
+                            </span>
+                            <span className="text-xs font-bold leading-snug">
+                              {getBilingualPrimary(opt, language)}
+                            </span>
+                          </div>
+                          {isAnswered && isThisCorrect && (
+                            <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                          )}
+                          {isAnswered && isThisPicked && !isThisCorrect && (
+                            <XCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {isAnswered && (
+                    <div className="text-xs font-mono font-bold text-black dark:text-white">
+                      {isCorrect
+                        ? language === 'hi'
+                          ? 'सही उत्तर!'
+                          : 'CORRECT!'
+                        : language === 'hi'
+                          ? `गलत · सही विकल्प: ${OPTION_LETTERS[q.correctIndex]}`
+                          : `INCORRECT · Answer: ${OPTION_LETTERS[q.correctIndex]}`}
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPracticeHint((prev) => ({ ...prev, [q.id]: !prev[q.id] }))
+                      }
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded-lg border-2 border-black dark:border-white text-black dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900 cursor-pointer"
+                    >
+                      <Lightbulb className="w-3.5 h-3.5" />
+                      <span>
+                        {showHint
+                          ? getBilingualPrimary(UI_TEXT.hideHint, language)
+                          : getBilingualPrimary(UI_TEXT.showHint, language)}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPracticeSol((prev) => ({ ...prev, [q.id]: !prev[q.id] }))
+                      }
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded-lg border-2 border-black dark:border-white text-black dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900 cursor-pointer"
+                    >
+                      <BookOpen className="w-3.5 h-3.5" />
+                      <span>
+                        {showSol
+                          ? language === 'hi'
+                            ? 'हल छुपाएँ'
+                            : 'Hide Solution'
+                          : language === 'hi'
+                            ? 'हल देखें'
+                            : 'Solution'}
+                      </span>
+                    </button>
+                  </div>
+
+                  {showHint && (
+                    <div className="p-3 rounded-lg border-2 border-dashed border-black dark:border-white text-xs text-black dark:text-white leading-relaxed">
+                      <span className="font-mono font-bold mr-1">HINT:</span>
+                      {getBilingualPrimary(q.hint, language)}
+                    </div>
+                  )}
+
+                  {showSol && (
+                    <div className="p-3 rounded-lg border-2 border-black dark:border-white bg-neutral-100 dark:bg-neutral-900 text-xs text-black dark:text-white leading-relaxed space-y-1">
+                      <div className="font-mono font-bold">
+                        {language === 'hi' ? 'विस्तृत हल:' : 'SOLUTION:'}
+                      </div>
+                      <p className="font-semibold">{getBilingualPrimary(q.solution, language)}</p>
+                      {getBilingualSecondary(q.solution, language) && (
+                        <p className="text-neutral-700 dark:text-neutral-300">{q.solution.hi}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {onOpenFullPractice && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenFullPractice(simulation.chapterId)}
+                      className="w-full mt-2 px-3.5 py-2 text-xs font-bold rounded-lg bg-black text-white dark:bg-white dark:text-black hover:opacity-85 transition-opacity flex items-center justify-between cursor-pointer"
+                    >
+                      <span>
+                        {language === 'hi'
+                          ? `सभी ${chapterQuestions.length} प्रश्न अभ्यास बैंक में खोलें`
+                          : `Open All ${chapterQuestions.length} Questions in Practice Bank`}
+                      </span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              );
+            })()
           )}
         </div>
       </section>
     </div>
   );
 }
+

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { ArrowRight, Search, Trash2 } from 'lucide-react';
+import { ArrowRight, BookOpen, Search, Trash2 } from 'lucide-react';
 import { CHAPTERS } from '../data/simulations';
+import { getQuestionsByChapter } from '../data/questionBank';
 import { LanguageMode, PhysicsSimulation } from '../types/physics';
 import { getBilingualPrimary, getBilingualSecondary, UI_TEXT } from '../utils/bilingual';
 
@@ -10,6 +11,7 @@ interface ChapterExplorerProps {
   activeSimId: string;
   language: LanguageMode;
   onSelectSimulation: (id: string) => void;
+  onOpenPractice: (chapterId: string) => void;
   onDeleteCustom: (id: string) => void;
   onOpenCustomGenerator: () => void;
 }
@@ -20,6 +22,7 @@ export function ChapterExplorer({
   activeSimId,
   language,
   onSelectSimulation,
+  onOpenPractice,
   onDeleteCustom,
   onOpenCustomGenerator,
 }: ChapterExplorerProps) {
@@ -35,7 +38,8 @@ export function ChapterExplorer({
       if (!normalizedQuery) return true;
       const chMatch =
         ch.name.en.toLowerCase().includes(normalizedQuery) ||
-        ch.name.hi.includes(normalizedQuery);
+        ch.name.hi.includes(normalizedQuery) ||
+        ch.number.includes(normalizedQuery);
       const simMatch = chSims.some(
         (s) =>
           s.title.en.toLowerCase().includes(normalizedQuery) ||
@@ -52,13 +56,13 @@ export function ChapterExplorer({
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-black dark:text-white">
             {language === 'hi'
-              ? 'कक्षा 11–12 भौतिकी सिमुलेशन पुस्तकालय'
-              : 'Class 11–12 Physics Simulation Library'}
+              ? 'संपूर्ण कक्षा 11–12 भौतिकी सिमुलेशन पुस्तकालय (29 अध्याय)'
+              : 'Complete Class 11–12 Physics Library (29 Chapters)'}
           </h1>
           <p className="mt-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-300">
             {language === 'hi'
-              ? 'किसी भी सूत्र या अध्याय पर क्लिक करें और हाई-कॉन्ट्रास्ट प्रोजेक्टर मोड में समझाएँ।'
-              : 'Select any chapter simulation to launch high-contrast vectors, real-time graphs, and bilingual What-If proofs.'}
+              ? 'हर अध्याय में लाइव 2D/3D सिमुलेशन, रीयल-टाइम ग्राफ़ और 12 छात्र अभ्यास प्रश्न शामिल हैं।'
+              : 'Every NCERT Class 11–12 chapter with interactive 2D/3D simulations, live graphs, and 12 bilingual practice questions.'}
           </p>
         </div>
 
@@ -75,7 +79,7 @@ export function ChapterExplorer({
                     : 'text-black dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900'
                 }`}
               >
-                {lvl === 'all' ? (language === 'hi' ? 'सभी' : 'All Chapters') : lvl}
+                {lvl === 'all' ? (language === 'hi' ? 'सभी (29)' : 'All Chapters') : lvl}
               </button>
             ))}
           </div>
@@ -159,6 +163,9 @@ export function ChapterExplorer({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {filteredChapters.map((chapter) => {
           const chapterSims = simulations.filter((s) => s.chapterId === chapter.id);
+          const has3D = chapterSims.some((s) => s.supports3D);
+          const qCount = getQuestionsByChapter(chapter.id).length;
+
           return (
             <section
               key={chapter.id}
@@ -169,6 +176,18 @@ export function ChapterExplorer({
                   <span>Chapter {chapter.number}</span>
                   <span className="mx-1.5" aria-hidden="true">·</span>
                   <span>{chapter.classLevel}</span>
+                  {has3D && (
+                    <>
+                      <span className="mx-1.5" aria-hidden="true">·</span>
+                      <span className="text-black dark:text-white">3D</span>
+                    </>
+                  )}
+                  {qCount > 0 && (
+                    <>
+                      <span className="mx-1.5" aria-hidden="true">·</span>
+                      <span>{qCount} Qs</span>
+                    </>
+                  )}
                 </div>
                 <h2 className="mt-1 text-xl font-bold text-black dark:text-white">
                   {getBilingualPrimary(chapter.name, language)}
@@ -209,6 +228,24 @@ export function ChapterExplorer({
                     </button>
                   );
                 })}
+
+                {qCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenPractice(chapter.id)}
+                    className="w-full px-3.5 py-2 rounded-lg border-2 border-black dark:border-white text-xs font-bold text-black dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors flex items-center justify-between gap-2 cursor-pointer"
+                  >
+                    <span className="inline-flex items-center gap-1.5">
+                      <BookOpen className="w-3.5 h-3.5" />
+                      <span>
+                        {language === 'hi'
+                          ? `अभ्यास प्रश्न हल करें (${qCount} प्रश्न)`
+                          : `Practice Questions (${qCount} Qs)`}
+                      </span>
+                    </span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             </section>
           );

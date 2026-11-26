@@ -5,9 +5,22 @@ export interface BilingualText {
 
 export type LanguageMode = 'en' | 'hi' | 'dual';
 export type ThemeMode = 'dark' | 'light';
-export type AppView = 'simulation' | 'chapters' | 'custom' | 'sheet';
+export type AppView = 'simulation' | 'chapters' | 'practice' | 'custom' | 'sheet';
 
 export type AccentKind = 'force' | 'velocity' | 'momentum' | 'energy';
+
+export type QuestionDifficulty = 'Board' | 'Concept' | 'JEE/NEET';
+
+export interface PracticeQuestion {
+  id: string;
+  chapterId: string;
+  difficulty: QuestionDifficulty;
+  question: BilingualText;
+  options: BilingualText[];
+  correctIndex: number;
+  hint: BilingualText;
+  solution: BilingualText;
+}
 
 export type VisualTemplate =
   | 'orbital'
@@ -78,6 +91,8 @@ export interface PhysicsSimulation {
   chapterId: string;
   chapterName?: BilingualText;
   isCustom?: boolean;
+  supports3D?: boolean;
+  default3D?: boolean;
   title: BilingualText;
   subtitle: BilingualText;
   formulaDisplay: string;

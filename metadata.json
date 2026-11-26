@@ -1,0 +1,6 @@
+{
+  "name": "PhysicaLive",
+  "description": "Interactive bilingual (English & Hindi) Class 11-12 physics formula live simulation lab with vectors, real-time graphs, classroom presenter mode, chalkboard annotation, What-If proofs, and AI custom formula simulation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Physics Neon Lab — Hindi / English</title>
+<style>
+:root{--bg:#07111f;--panel:#101e31;--panel2:#14263d;--ink:#eaf2ff;--muted:#a8bad2;--accent:#69d5ff;--line:#29415e}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 80% 0,#183657 0,transparent 38%),var(--bg);color:var(--ink);font:15px/1.5 system-ui,Segoe UI,sans-serif}
+header{padding:22px clamp(16px,4vw,48px);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap}
+h1{font-size:clamp(22px,3vw,34px);margin:0}header p{margin:4px 0 0;color:var(--muted)}
+.formula-note{color:var(--muted);font-size:13px;text-align:center;margin-top:-7px}
+.example-box{background:#0b1929;border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:15px}
+.example-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.example-head b{font-size:13px}.example-box p{color:#d7e5f7;margin:9px 0 0;font-size:13px}
+.example-box select{max-width:60%;font-size:12px;padding:7px}
+button,select,input{font:inherit}button,select{background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px 13px;cursor:pointer}
+button.active{background:#14516c;border-color:var(--accent)}main{display:grid;grid-template-columns:270px minmax(0,1fr);gap:18px;padding:20px clamp(12px,3vw,36px);max-width:1600px;margin:auto}
+nav,.info,.stage{background:linear-gradient(145deg,var(--panel),#0b1727);border:1px solid var(--line);border-radius:16px}
+nav{padding:14px;height:max-content}nav h2,.info h2{font-size:16px;margin:4px 0 12px}
+.topic{display:block;width:100%;text-align:left;margin:5px 0;padding:10px 11px;border-radius:9px}.topic small{display:block;color:var(--muted);font-size:12px}
+.workspace{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(280px,1fr);gap:16px}
+.stage{overflow:hidden;min-height:430px;position:relative;background:radial-gradient(ellipse at center,#193451,#07111f 75%)}
+canvas{display:block;width:100%;height:100%;min-height:430px;touch-action:none}
+.stagebar{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;gap:8px;pointer-events:none}.stagebar>*{pointer-events:auto}
+.hint{position:absolute;bottom:12px;left:14px;color:#bfd2e9;font-size:12px;background:#07111fc9;padding:6px 9px;border-radius:8px}
+.info{padding:18px}.eyebrow{color:var(--accent);font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:11px}
+.info h2{font-size:25px;margin:5px 0}.sub{color:var(--muted);margin:0 0 14px}
+.formula{font-size:clamp(20px,2vw,28px);background:#071522;border:1px solid var(--line);border-radius:12px;padding:13px;margin:14px 0;text-align:center;font-family:Georgia,serif}
+.controls{display:grid;gap:12px;margin-top:14px}.control{background:#0b1929;padding:10px;border-radius:10px}.control label{display:flex;justify-content:space-between;gap:10px;color:#d8e6f8;font-size:13px}.control input{width:100%;accent-color:var(--accent);margin-top:9px}
+.explain{color:#d7e5f7}.explain p{margin:8px 0}.result{color:var(--accent);font-weight:700;margin-top:10px}
+.footer{color:var(--muted);font-size:12px;padding:0 20px 20px;max-width:1600px;margin:auto}
+@media(max-width:900px){main{grid-template-columns:1fr}.workspace{grid-template-columns:1fr}.stage,canvas{min-height:340px}nav{order:0}.topic{width:auto;display:inline-block;vertical-align:top;min-width:145px}}
+@media(max-width:520px){header{align-items:flex-start}.stage,canvas{min-height:300px}.info h2{font-size:22px}}
+</style>
+</head>
+<body>
+<header><div><h1>Physics Neon Lab</h1><p>Interactive concepts • हिंदी + English • Learn by changing the variables</p></div><div><button id="lang" class="active">हिंदी + English</button></div></header>
+<main>
+<nav><h2>Choose a concept / विषय चुनें</h2><div id="topics"></div></nav>
+<section class="workspace">
+<div class="stage"><canvas id="scene"></canvas><div class="stagebar"><button id="rotate" class="active">Auto rotate: ON</button><button id="reset">Reset view</button></div><div class="hint">Drag to rotate • Scroll to zoom</div></div>
+<article class="info"><div class="eyebrow">Interactive model</div><h2 id="name"></h2><p class="sub" id="translation"></p><div class="formula" id="formula"></div><div class="formula-note" id="formulaNote"></div>
+<div class="explain" id="explain"></div>
+<div class="example-box"><div class="example-head"><b>Real-life 3D examples / वास्तविक उदाहरण</b><select id="exampleSelect" aria-label="Choose example"></select></div><p id="exampleText"></p></div>
+<div class="controls" id="controls"></div><div class="result" id="result"></div></article>
+</section>
+</main>
+<div class="footer">Models are conceptual illustrations, not engineering-grade simulations. Use the controls to see how changing one quantity affects the result.</div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+const topics=[
+{id:'torque',en:'Torque',hi:'बल आघूर्ण',formula:'τ = r F sin θ',desc:'Turning effect of a force about an axis. / किसी अक्ष के चारों ओर बल का घुमाने वाला प्रभाव।',detail:'Torque increases with force and perpendicular distance from the pivot. At 90°, the turning effect is maximum. / बल और धुरी से लंबवत दूरी बढ़ने पर torque बढ़ता है। 90° पर प्रभाव अधिकतम होता है।',vars:[['Force F','बल F',1,0,20,'N'],['Lever arm r','भुजा r',2,0.2,5,'m'],['Angle θ','कोण θ',90,0,180,'°'] ],calc:v=>v[0]*v[1]*Math.sin(v[2]*Math.PI/180),unit:'N·m'},
+{id:'moi',en:'Moment of Inertia',hi:'जड़त्व आघूर्ण',formula:'I = Σ m r²',desc:'Resistance to angular acceleration. / कोणीय त्वरण का विरोध करने की क्षमता।',detail:'Mass farther from the axis contributes much more because distance is squared. / अक्ष से दूर रखा द्रव्यमान अधिक योगदान देता है क्योंकि दूरी का वर्ग लिया जाता है।',vars:[['Mass m','द्रव्यमान m',2,.1,10,'kg'],['Radius r','त्रिज्या r',1,.1,3,'m']],calc:v=>v[0]*v[1]**2,unit:'kg·m²'},
+{id:'angular',en:'Angular Momentum',hi:'कोणीय संवेग',formula:'L = I ω',desc:'Rotational equivalent of linear momentum. / रैखिक संवेग का घूर्णन समकक्ष।',detail:'For a fixed moment of inertia, faster rotation means greater angular momentum. / नियत जड़त्व आघूर्ण पर अधिक कोणीय वेग से कोणीय संवेग बढ़ता है।',vars:[['Moment of inertia I','जड़त्व आघूर्ण I',2,.1,10,'kg·m²'],['Angular speed ω','कोणीय वेग ω',4,0,20,'rad/s']],calc:v=>v[0]*v[1],unit:'kg·m²/s'},
+{id:'viscosity',en:'Coefficient of Viscosity',hi:'श्यानता गुणांक',formula:'η = F h / (A v)',desc:'Measure of a fluid’s internal resistance to flow. / द्रव के बहने में आंतरिक प्रतिरोध का माप।',detail:'For the simple parallel-layer model, viscosity rises with force and gap, and falls with area and relative speed. / इस सरल परत मॉडल में बल और दूरी बढ़ने पर η बढ़ता है; क्षेत्रफल और वेग बढ़ने पर घटता है।',vars:[['Force F','बल F',2,.1,20,'N'],['Gap h','परत दूरी h',.01,.001,.1,'m'],['Area A','क्षेत्रफल A',1,.1,5,'m²'],['Speed v','वेग v',1,.1,10,'m/s']],calc:v=>v[0]*v[1]/(v[2]*v[3]),unit:'Pa·s'},
+{id:'planck',en:'Planck Constant',hi:'प्लांक नियतांक',formula:'E = h f',desc:'Quantum of action linking photon energy and frequency. / फोटॉन की ऊर्जा और आवृत्ति को जोड़ने वाला नियतांक।',detail:'Planck constant is fixed: 6.62607015 × 10⁻³⁴ J·s. Photon energy increases linearly with frequency. / प्लांक नियतांक का मान निश्चित है। आवृत्ति बढ़ने पर फोटॉन ऊर्जा समानुपाती बढ़ती है।',vars:[['Frequency f','आवृत्ति f',5e14,1e13,1e15,'Hz']],calc:v=>6.62607015e-34*v[0],unit:'J',fixed:'h = 6.62607015 × 10⁻³⁴ J·s'},
+{id:'latent',en:'Latent Heat',hi:'गुप्त ऊष्मा',formula:'Q = m L',desc:'Heat absorbed or released during a phase change without temperature change. / अवस्था परिवर्तन के दौरान ताप बदले बिना अवशोषित या मुक्त ऊष्मा।',detail:'During melting or boiling, energy changes the state rather than raising temperature. / गलन या क्वथन के समय ऊर्जा ताप बढ़ाने के बजाय अवस्था बदलती है।',vars:[['Mass m','द्रव्यमान m',1,.1,10,'kg'],['Specific latent heat L','विशिष्ट गुप्त ऊष्मा L',334,10,2500,'kJ/kg']],calc:v=>v[0]*v[1],unit:'kJ'},
+{id:'specific',en:'Specific Heat Capacity',hi:'विशिष्ट ऊष्मा धारिता',formula:'Q = m c ΔT',desc:'Heat needed to raise unit mass by one degree. / इकाई द्रव्यमान का ताप एक डिग्री बढ़ाने के लिए आवश्यक ऊष्मा।',detail:'For the same heat input, a material with higher specific heat changes temperature less. / समान ऊष्मा देने पर अधिक विशिष्ट ऊष्मा वाले पदार्थ का ताप कम बदलता है।',vars:[['Heat Q','ऊष्मा Q',40,1,100,'kJ'],['Mass m','द्रव्यमान m',1,.1,10,'kg'],['Specific heat c','विशिष्ट ऊष्मा c',4.18,.1,10,'kJ/kg·K']],calc:v=>v[0]/(v[1]*v[2]),unit:'K (temperature rise)'},
+{id:'charge',en:'Electric Charge',hi:'विद्युत आवेश',formula:'Q = n e',desc:'Property responsible for electric interaction. / विद्युत अंतःक्रिया के लिए उत्तरदायी गुण।',detail:'Charge is quantized in multiples of elementary charge e. Like charges repel; unlike charges attract. / आवेश मूल आवेश e के पूर्ण गुणजों में होता है। समान आवेश प्रतिकर्षित और विपरीत आकर्षित करते हैं।',vars:[['Number of elementary charges n','मूल आवेशों की संख्या n',5,1,100,'×10¹⁸']],calc:v=>v[0]*1.602176634e-19*1e18,unit:'C'},
+{id:'potential',en:'Electric Potential',hi:'विद्युत विभव',formula:'V = W / Q',desc:'Work done per unit charge. / प्रति इकाई आवेश किया गया कार्य।',detail:'Potential difference tells how much energy per coulomb is transferred between two points. / विभवांतर बताता है कि दो बिंदुओं के बीच प्रति कूलॉम कितना कार्य या ऊर्जा स्थानांतरित होती है।',vars:[['Work W','कार्य W',12,.1,100,'J'],['Charge Q','आवेश Q',2,.1,20,'C']],calc:v=>v[0]/v[1],unit:'V'},
+{id:'resistance',en:'Electric Resistance',hi:'विद्युत प्रतिरोध',formula:'R = V / I',desc:'Opposition to electric current. / विद्युत धारा के प्रवाह का विरोध।',detail:'For a fixed voltage, higher resistance means lower current. For a uniform wire, R = ρℓ/A. / नियत वोल्टेज पर प्रतिरोध बढ़ने से धारा घटती है। समान तार के लिए R = ρℓ/A।',vars:[['Voltage V','वोल्टेज V',12,.1,50,'V'],['Current I','धारा I',2,.1,10,'A']],calc:v=>v[0]/v[1],unit:'Ω'},
+{id:'capacitance',en:'Electric Capacitance',hi:'विद्युत धारिता',formula:'C = Q / V',desc:'Ability to store charge per unit potential difference. / प्रति इकाई विभवांतर आवेश संग्रह करने की क्षमता।',detail:'For a parallel-plate capacitor, C = εA/d. Larger plate area increases capacitance; larger separation decreases it. / समानांतर प्लेट संधारित्र में क्षेत्रफल बढ़ने पर धारिता बढ़ती है और दूरी बढ़ने पर घटती है।',vars:[['Charge Q','आवेश Q',20,.1,100,'μC'],['Voltage V','वोल्टेज V',10,.1,100,'V']],calc:v=>v[0]/v[1],unit:'μF'}
+];
+const examples = {
+torque:[
+["Opening a door","Push farther from the hinge to make the door rotate more easily. Move the force point and change the force/angle sliders to see the turning effect."],
+["Spanner / wrench","A longer wrench gives more torque for the same force. Compare the lever-arm values."],
+["Pedalling a bicycle","Pedal force acting at the crank radius produces torque that turns the chainring."]
+],
+moi:[
+["Figure skater","A skater pulls their arms inward, reducing moment of inertia and spinning faster when angular momentum is conserved."],
+["Flywheel","A heavy rim stores rotational energy effectively because much of its mass is far from the axis."],
+["Door about its hinge","Mass distributed farther from the hinge makes the door harder to start or stop rotating."]
+],
+angular:[
+["Spinning bicycle wheel","A faster-spinning wheel has greater angular momentum for the same moment of inertia."],
+["Gyroscope","Angular momentum helps a spinning gyroscope resist changes in its orientation."],
+["Figure skater","Pulling arms inward reduces I; rotational speed rises to conserve angular momentum."]
+],
+viscosity:[
+["Honey vs water","Honey has much greater viscosity than water, so it flows more slowly under comparable conditions."],
+["Engine oil","Oil viscosity affects the thickness of the lubricating film between moving engine parts."],
+["Syringe flow","A more viscous liquid needs a larger pressure force to flow through the same narrow opening."]
+],
+planck:[
+["LED light","Photon energy depends on frequency; blue light photons carry more energy than red light photons."],
+["Solar cells","Photons must have sufficient energy to excite electrons across a material's band gap."],
+["Photoelectric effect","Increasing light frequency increases photon energy according to E = hf."]
+],
+latent:[
+["Ice melting","Heat supplied to melting ice changes solid water into liquid water while temperature stays near its melting point."],
+["Boiling water","During boiling, added energy changes liquid water into steam rather than raising the boiling temperature."],
+["Sweating","Evaporation absorbs latent heat from skin and cools the body."]
+],
+specific:[
+["Water in a kettle","Water's high specific heat means substantial energy is needed to raise its temperature."],
+["Beach and sea breeze","Land heats and cools faster than seawater because their specific heat capacities differ."],
+["Car radiator","Coolant absorbs heat from the engine; its specific heat capacity affects how much energy it can carry."]
+],
+charge:[
+["Balloon and hair","Rubbing transfers electrons, leaving opposite net charges that attract."],
+["Lightning","Charge separation in storm clouds can create a large electric discharge."],
+["Photocopier","Electrostatic charge helps attract toner particles to selected regions."]
+],
+potential:[
+["Battery","A battery maintains a potential difference that can drive charge through a circuit."],
+["Water analogy","Voltage is like pressure difference: it represents energy available per unit charge."],
+["Lightning","A large potential difference between cloud and ground can drive a discharge."]
+],
+resistance:[
+["Toaster element","A resistive heating element converts electrical energy into heat."],
+["Long thin wire","Increasing wire length or reducing its cross-sectional area increases resistance."],
+["Dimmer / resistor","Changing resistance changes current for a given supply voltage."]
+],
+capacitance:[
+["Camera flash","A capacitor stores electrical energy and releases it quickly to produce a bright flash."],
+["Touch screen","Capacitive screens detect changes in capacitance when a finger approaches the surface."],
+["Power supply","Capacitors smooth voltage fluctuations in electronic circuits."]
+]
+};
+const formulaHindi = {
+torque:"बल आघूर्ण = बल × धुरी से दूरी × sin(कोण)",
+moi:"जड़त्व आघूर्ण = Σ (द्रव्यमान × अक्ष से दूरी²)",
+angular:"कोणीय संवेग = जड़त्व आघूर्ण × कोणीय वेग",
+viscosity:"श्यानता गुणांक = बल × परतों की दूरी ÷ (क्षेत्रफल × वेग)",
+planck:"फोटॉन ऊर्जा = प्लांक नियतांक × आवृत्ति",
+latent:"ऊष्मा = द्रव्यमान × विशिष्ट गुप्त ऊष्मा",
+specific:"ऊष्मा = द्रव्यमान × विशिष्ट ऊष्मा × ताप परिवर्तन",
+charge:"आवेश = मूल आवेशों की संख्या × मूल आवेश",
+potential:"विद्युत विभव = कार्य ÷ आवेश",
+resistance:"प्रतिरोध = विभवांतर ÷ धारा",
+capacitance:"धारिता = आवेश ÷ विभवांतर"
+};
+const $=id=>document.getElementById(id);let current=0,lang='both',auto=true,scene,camera,renderer,object,drag=false,lastX=0,lastY=0,rotX=.3,rotY=.4,zoom=1,modelScale={x:1,y:1,z:1},modelRot={x:0,y:0,z:0};
+function fmt(n){if(!isFinite(n))return '—';if(Math.abs(n)!==0&&(Math.abs(n)<.001||Math.abs(n)>=1e6))return n.toExponential(3);return Number(n.toPrecision(4)).toString()}
+function buildTopics(){ $('topics').innerHTML=topics.map((t,i)=>`<button class="topic ${i===current?'active':''}" data-i="${i}">${t.en}<small>${t.hi}</small></button>`).join('');document.querySelectorAll('.topic').forEach(b=>b.onclick=()=>select(+b.dataset.i))}
+function select(i){current=i;buildTopics();renderInfo();makeObject();updateObject(topics[current].vars.map(v=>v[2]))}
+function renderInfo(){
+ let t=topics[current], ex=examples[t.id]||[];
+ $('name').textContent=lang==='hi'?t.hi:t.en;
+ $('translation').textContent=lang==='en'?t.en+' — '+t.hi:t.desc;
+ $('formula').textContent=t.formula;
+ $('formulaNote').textContent=lang==='hi'?(formulaHindi[t.id]||'सूत्र'):t.formula+'  |  '+(formulaHindi[t.id]||'');
+ $('explain').innerHTML=`<p>${t.detail}</p>${t.fixed?`<p><b>${t.fixed}</b></p>`:''}`;
+ $('exampleSelect').innerHTML=ex.map((e,i)=>`<option value="${i}">${e[0]}</option>`).join('');
+ $('exampleText').textContent=ex[0]?ex[0][1]:'';
+ $('exampleSelect').onchange=()=>{$('exampleText').textContent=ex[+$('exampleSelect').value][1];makeObject()};
+ $('controls').innerHTML=t.vars.map((v,i)=>`<div class="control"><label><span>${lang==='hi'?v[1]:v[0]}</span><b id="val${i}">${fmt(v[2])} ${v[5]}</b></label><input type="range" min="${v[3]}" max="${v[4]}" step="${(v[4]-v[3])/300}" value="${v[2]}" data-i="${i}"></div>`).join('');
+ document.querySelectorAll('.control input').forEach(el=>el.oninput=()=>{
+   let vals=[...document.querySelectorAll('.control input')].map(x=>+x.value);
+   $('val'+el.dataset.i).textContent=fmt(+el.value)+' '+t.vars[+el.dataset.i][5];
+   $('result').textContent='Calculated result / परिकलित मान: '+fmt(t.calc(vals))+' '+t.unit;
+   updateObject(vals);
+ });
+ let vals=t.vars.map(v=>v[2]);
+ $('result').textContent='Calculated result / परिकलित मान: '+fmt(t.calc(vals))+' '+t.unit;
+}
+$('lang').onclick=()=>{lang=lang==='both'?'hi':lang==='hi'?'en':'both';$('lang').textContent=lang==='both'?'हिंदी + English':lang==='hi'?'हिंदी':'English';renderInfo()};
+$('rotate').onclick=()=>{auto=!auto;$('rotate').textContent='Auto rotate: '+(auto?'ON':'OFF');$('rotate').classList.toggle('active',auto)};$('reset').onclick=()=>{rotX=.3;rotY=.4;zoom=1};
+function init3d(){const c=$('scene');scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(45,1,.1,100);camera.position.set(0,0,7);renderer=new THREE.WebGLRenderer({canvas:c,antialias:true,alpha:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));scene.add(new THREE.AmbientLight(0xffffff,1.4));let light=new THREE.DirectionalLight(0xffffff,2);light.position.set(4,5,6);scene.add(light);window.addEventListener('resize',resize);resize();c.addEventListener('pointerdown',e=>{drag=true;lastX=e.clientX;lastY=e.clientY;c.setPointerCapture(e.pointerId)});c.addEventListener('pointerup',()=>drag=false);c.addEventListener('pointermove',e=>{if(!drag)return;rotY+=(e.clientX-lastX)*.01;rotX+=(e.clientY-lastY)*.01;lastX=e.clientX;lastY=e.clientY});c.addEventListener('wheel',e=>{zoom=Math.max(.55,Math.min(2.5,zoom+e.deltaY*-.001));e.preventDefault()},{passive:false});animate()}
+function resize(){let w=$('scene').clientWidth,h=$('scene').clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
+function clearObj(){if(object){scene.remove(object);object.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material)o.material.dispose()})}object=new THREE.Group();scene.add(object)}
+function mat(color){return new THREE.MeshStandardMaterial({color,metalness:.45,roughness:.3})}
+function rod(a,b,r,color){let A=new THREE.Vector3(...a),B=new THREE.Vector3(...b),d=new THREE.Vector3().subVectors(B,A);let m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,d.length(),20),mat(color));m.position.copy(A).add(B).multiplyScalar(.5);m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());object.add(m)}
+function ball(x,y,z,r,color){let m=new THREE.Mesh(new THREE.SphereGeometry(r,32,24),mat(color));m.position.set(x,y,z);object.add(m)}
+function makeObject(){clearObj();let id=topics[current].id;
+if(id==='torque'){rod([-2,-.6,0],[2,-.6,0],.06,0x69d5ff);ball(0,-.6,0,.16,0xffffff);rod([0,-.6,0],[1.3,.5,0],.07,0xffbd59);ball(1.3,.5,0,.18,0xffbd59);rod([1.3,.5,0],[1.3,1.6,0],.035,0xff5c7a)}
+else if(id==='moi'||id==='angular'){rod([0,-1.7,0],[0,1.7,0],.045,0xffffff);for(let i=0;i<8;i++){let a=i*Math.PI/4;ball(Math.cos(a)*1.3,Math.sin(a)*1.3,0,.17,0x69d5ff)}}
+else if(id==='viscosity'){for(let y=-1.2;y<=1.2;y+=.4){let m=new THREE.Mesh(new THREE.BoxGeometry(3,.025,.9),mat(y===-1.2?0xffbd59:0x377da7));m.position.y=y;object.add(m)}for(let i=0;i<6;i++)ball(-1+i*.4,0,.15,.09,0x69d5ff)}
+else if(id==='planck'){ball(0,0,0,.65,0xffbd59);for(let i=0;i<3;i++){let tor=new THREE.Mesh(new THREE.TorusGeometry(1.2+i*.25,.025,8,100),mat(0x69d5ff));tor.rotation.x=Math.PI/2;tor.rotation.y=i*.6;object.add(tor)}}
+else if(id==='latent'||id==='specific'){let cube=new THREE.Mesh(new THREE.BoxGeometry(1.8,1.8,1.8),mat(id==='latent'?0x69d5ff:0xffbd59));object.add(cube);for(let i=0;i<7;i++)ball(-.7+(i%4)*.45,-.5+Math.floor(i/4)*.7,.95,.09,0xffffff)}
+else if(id==='charge'||id==='potential'){ball(-1,0,0,.42,0xff5c7a);ball(1,0,0,.42,0x69d5ff);for(let i=-2;i<=2;i++){rod([-1.5,i*.35,0],[1.5,i*.35,0],.012,0x9ab4d0)}}
+else if(id==='resistance'){rod([-1.8,0,0],[-.6,0,0],.09,0x69d5ff);for(let i=0;i<5;i++)rod([-.6+i*.24,0,0],[-.36+i*.24,.45,0],.055,0xffbd59);rod([.6,0,0],[1.8,0,0],.09,0x69d5ff)}
+else{for(let x of [-.8,.8]){let p=new THREE.Mesh(new THREE.BoxGeometry(.12,2,.9),mat(0xffbd59));p.position.x=x;object.add(p)}for(let i=0;i<7;i++)ball(-.55+i*.18,0,.2,.07,0x69d5ff)}
+}
+function updateObject(vals){
+ if(!object)return;
+ const id=topics[current].id;
+ // Preserve variable-driven model dimensions and rotation; the animation loop applies
+ // these values together with the user's zoom and orbit controls.
+ const norm=(v,i)=>{let a=topics[current].vars[i];return Math.max(0,Math.min(1,(v-a[3])/(a[4]-a[3]||1)))};
+ const n=norm(vals[0]||0,0), n2=vals.length>1?norm(vals[1]||0,1):n;
+ let sx=1,sy=1,sz=1,rx=0,ry=0,rz=0;
+ if(id==='torque'){sx=.75+n*.55;sy=.75+n2*.55;rz=(vals[2]||0)*Math.PI/180*.15}
+ else if(id==='moi'||id==='angular'){sx=sy=sz=.7+n2*.7;ry=.008+n*.025}
+ else if(id==='viscosity'){sy=.7+n* .7;rx=.05+n2*.35}
+ else if(id==='planck'){sx=sy=sz=.75+n*.7;ry=.01+n*.04}
+ else if(id==='latent'||id==='specific'){sx=sy=sz=.7+n*.65;ry=.005+n2*.02}
+ else if(id==='charge'||id==='potential'){sx=.7+n*.9;ry=.15+n2*.4}
+ else if(id==='resistance'){sx=.7+n2*.8;ry=.08+n*.4}
+ else {sx=.7+n*.9;sy=.7+n2*.8}
+ modelScale={x:sx,y:sy,z:sz};modelRot={x:rx,y:ry,z:rz};
+}
+function animate(){requestAnimationFrame(animate);if(auto)rotY+=.004;if(object){object.rotation.x=rotX+modelRot.x;object.rotation.y=rotY+modelRot.y;object.rotation.z=modelRot.z;object.scale.set(zoom*modelScale.x,zoom*modelScale.y,zoom*modelScale.z)}renderer.render(scene,camera)}
+init3d();buildTopics();renderInfo();makeObject();updateObject(topics[current].vars.map(v=>v[2]));
+</script>
+</body></html>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Play, Search } from 'lucide-react';
+import { Play, Printer, Search } from 'lucide-react';
 import { CHAPTERS } from '../data/simulations';
 import { LanguageMode, PhysicsSimulation } from '../types/physics';
 import { getBilingualPrimary, getBilingualSecondary, UI_TEXT } from '../utils/bilingual';
@@ -47,21 +47,47 @@ export function FormulaSheetView({
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+      {/* Print-Only Formal B&W Exam Reference Header */}
+      <div className="print-only pb-4 mb-4 border-b-2 border-black">
+        <div className="flex items-baseline justify-between gap-4">
+          <h1 className="text-xl font-extrabold text-black">
+            PhysicaLive · Class 11–12 Master Physics Formula Sheet
+          </h1>
+          <span className="font-mono text-xs font-bold text-black">
+            {filtered.length} Formulas · NCERT Syllabus
+          </span>
+        </div>
+        <div className="mt-2 grid grid-cols-3 gap-4 text-xs font-mono font-bold text-black">
+          <div>Student Name: _____________________</div>
+          <div>Class / Batch: ____________</div>
+          <div>Date: ____________</div>
+        </div>
+      </div>
+
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 no-print">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-black dark:text-white">
             {language === 'hi'
-              ? 'मास्टर भौतिकी फ़ॉर्मूला शीट (कक्षा 11–12)'
-              : 'Master Physics Formula Sheet (Class 11–12)'}
+              ? `मास्टर भौतिकी फ़ॉर्मूला शीट (${allSimulations.length} सूत्र)`
+              : `Master Physics Formula Sheet (${allSimulations.length} Formulas)`}
           </h1>
           <p className="mt-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-300">
             {language === 'hi'
-              ? 'हर सूत्र के सामने दिए गए बटन से तुरंत उसका लाइव 2D/3D सिमुलेशन खोलें।'
-              : 'All 29 NCERT Class 11–12 chapter formulas linked directly to live 2D and 3D classroom simulations.'}
+              ? 'कक्षा 11–12 के सभी 29 अध्यायों के सूत्र — सीधे लाइव सिमुलेशन खोलें या A4 PDF प्रिंट करें।'
+              : 'All 29 NCERT Class 11–12 chapters linked directly to live 2D/3D simulations with one-click B&W PDF print.'}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg bg-black text-white dark:bg-white dark:text-black hover:opacity-85 transition-opacity whitespace-nowrap cursor-pointer"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span>{getBilingualPrimary(UI_TEXT.printFormulaSheet, language)}</span>
+          </button>
+
           <div className="flex items-center gap-1 p-1 rounded-lg border-2 border-black dark:border-white">
             {(['all', 'Class 11', 'Class 12'] as const).map((lvl) => (
               <button
@@ -79,7 +105,7 @@ export function FormulaSheetView({
             ))}
           </div>
 
-          <div className="relative w-full sm:w-72">
+          <div className="relative w-full sm:w-64">
             <Search className="w-4 h-4 text-black dark:text-white absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
@@ -106,7 +132,7 @@ export function FormulaSheetView({
                 <th className="py-3.5 px-5 hidden lg:table-cell">
                   {language === 'hi' ? 'संबंधित समीकरण' : 'Key Derived Forms'}
                 </th>
-                <th className="py-3.5 px-5 text-right">
+                <th className="py-3.5 px-5 text-right no-print">
                   {language === 'hi' ? 'लाइव डेमो' : 'Action'}
                 </th>
               </tr>
@@ -115,7 +141,7 @@ export function FormulaSheetView({
               {filtered.map((sim) => (
                 <tr
                   key={sim.id}
-                  className="hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-colors"
+                  className="hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-colors print-card"
                 >
                   <td className="py-4 px-5 align-top">
                     <div className="text-xs font-mono font-bold text-neutral-700 dark:text-neutral-300">
@@ -145,7 +171,7 @@ export function FormulaSheetView({
                       )}
                     </div>
                   </td>
-                  <td className="py-4 px-5 align-top text-right">
+                  <td className="py-4 px-5 align-top text-right no-print">
                     <button
                       type="button"
                       onClick={() => onLaunchSimulation(sim.id)}
@@ -164,3 +190,4 @@ export function FormulaSheetView({
     </div>
   );
 }
+

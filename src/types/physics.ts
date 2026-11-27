@@ -90,6 +90,7 @@ export interface PhysicsSimulation {
   id: string;
   chapterId: string;
   chapterName?: BilingualText;
+  shortTabLabel?: BilingualText;
   isCustom?: boolean;
   supports3D?: boolean;
   default3D?: boolean;
@@ -99,6 +100,10 @@ export interface PhysicsSimulation {
   secondaryFormulas?: SecondaryFormulaItem[];
   variables: SimVariable[];
   presets?: SimPreset[];
+  comparePresetB?: {
+    label: BilingualText;
+    params: Record<string, number>;
+  };
   explanation: BilingualText;
   realLife: BilingualText;
   whatIfPrompts: WhatIfPrompt[];
@@ -110,6 +115,41 @@ export interface PhysicsSimulation {
   primaryOutput?: CustomOutputSpec;
   secondaryOutputs?: CustomOutputSpec[];
   graphXVar?: string;
+}
+
+export interface DerivationStep {
+  title: BilingualText;
+  equation: string;
+  note: BilingualText;
+}
+
+export interface SolverInputField {
+  key: string;
+  symbol: string;
+  label: BilingualText;
+  unit: string;
+  defaultValue: number;
+  min?: number;
+  max?: number;
+  step?: number;
+}
+
+export interface VariableSolverSpec {
+  id: string;
+  targetSymbol: string;
+  targetLabel: BilingualText;
+  unit: string;
+  rearrangedFormula: string;
+  inputs: SolverInputField[];
+  solve: (vals: Record<string, number>) =>
+    | { value: number; substituted: string }
+    | { error: string };
+}
+
+export interface FormulaDerivationSpec {
+  simId?: string;
+  steps: DerivationStep[];
+  solvers: VariableSolverSpec[];
 }
 
 export type DrawingTool = 'pen' | 'arrow' | 'dashed-arrow' | 'highlighter' | 'eraser';

@@ -920,6 +920,399 @@ function buildCoulombRig(theme: ThemeMode): SceneRig {
   };
 }
 
+// ============================================================================
+// 8. 3D ESCAPE VELOCITY & ORBITAL LAUNCH
+// ============================================================================
+function buildEscapeVelocityRig(theme: ThemeMode): SceneRig {
+  const pal = makePalette3D(theme);
+  const group = new THREE.Group();
+
+  // Central Planet with meridian grid + gravity well rings
+  const planetGroup = new THREE.Group();
+  const planetCore = new THREE.Mesh(new THREE.SphereGeometry(1.4, 24, 18), pal.solidMat());
+  const planetWire = new THREE.Mesh(
+    new THREE.SphereGeometry(1.47, 16, 12),
+    new THREE.MeshBasicMaterial({ color: pal.primaryHex, wireframe: true })
+  );
+  planetGroup.add(planetCore, planetWire);
+  group.add(planetGroup);
+
+  // Orbital reference shell & escape threshold dashed ring
+  const orbitRing = new THREE.Mesh(new THREE.TorusGeometry(2.35, 0.025, 8, 72), pal.contrastMat());
+  orbitRing.rotation.x = Math.PI / 2;
+  group.add(orbitRing);
+
+  // Composite Multi-Stage Rocket (nose cone + fuselage + 3 fins + nozzle)
+  const rocketGroup = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.18, 0.72, 12), pal.solidMat());
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.34, 12), pal.contrastMat());
+  nose.position.y = 0.53;
+  const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.14, 0.16, 10), pal.contrastMat());
+  nozzle.position.y = -0.44;
+  [body, nose, nozzle].forEach((m) => addCrispEdges(m, pal.edgeMat()));
+  for (let i = 0; i < 3; i++) {
+    const fin = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.24, 0.22), pal.solidMat());
+    const a = (i / 3) * Math.PI * 2;
+    fin.position.set(Math.cos(a) * 0.18, -0.24, Math.sin(a) * 0.18);
+    fin.rotation.y = -a;
+    rocketGroup.add(fin);
+  }
+  rocketGroup.add(body, nose, nozzle);
+  group.add(rocketGroup);
+
+  // Live trajectory trail buffer (zero per-frame alloc)
+  const TRAIL_N = 140;
+  const trailPos = new Float32Array(TRAIL_N * 3);
+  const trailGeo = new THREE.BufferGeometry();
+  trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
+  const trailLine = new THREE.Line(trailGeo, new THREE.LineBasicMaterial({ color: pal.primaryHex }));
+  group.add(trailLine);
+
+  const vArrow = new THREE.ArrowHelper(new THREE.Vector3(0, 0, -1), new THREE.Vector3(), 1.8, pal.primaryHex, 0.4, 0.2);
+  const gArrow = new THREE.ArrowHelper(new THREE.Vector3(-1, 0, 0), new THREE.Vector3(), 1.4, pal.midHex, 0.35, 0.18);
+  group.add(vArrow, gArrow);
+
+  const tmpDir = new THREE.Vector3();
+  const tmpUp = new THREE.Vector3(0, 1, 0);
+  const tmpQuat = new THREE.Quaternion();
+
+  return {
+    group,
+    defaultCamPos: [4.8, 5.2, 7.6],
+    defaultTarget: [0, 0, 0],
+    update: (_dt, t, params, showVectors) => {
+      const M = params.M ?? 6.0;
+      const R = params.R ?? 6.4;
+      const vLaunch = params.vLaunch ?? 11.2;
+
+      const vOrb = Math.sqrt((G_CONST * M * 1e24) / (R * 1e6)) / 1000;
+      const vEsc = vOrb * Math.SQRT2;
+      const gSurf = (G_CONST * M * 1e24) / Math.pow(R * 1e6, 2);
+      const ratio = vLaunch / Math.max(0.1, vOrb);
+
+      planetGroup.rotation.y = t * 0.3;
+      const pScale = 0.72 + (R / 12) * 0.6;
+      planetGroup.scale.setScalar(pScale);
+      const rSurf = 1.47 * pScale;
+      const rStart = rSurf + 0.48;
+      orbitRing.scale.set(rStart / 2.35, rStart / 2.35, 1);
+
+      const isEscape = vLaunch >= vEsc - 0.05;
+      const isSubOrbital = vLaunch < vOrb * 0.92;
+      const phase = (t * 0.32) % 1;
+
+      // Compute 3D trajectory path
+      const evalPoint = (u: number, out: [number, number, number]) => {
+        if (isEscape) {
+          const s = u * 3.1;
+          const ang = s * 0.65;
+          const rad = rStart + Math.pow(s, 1.55) * (0.95 + (vLaunch - vEsc) * 0.16);
+          out[0] = Math.cos(ang) * rad;
+          out[1] = Math.sin(u * Math.PI * 0.6) * (rad - rStart) * 0.35;
+          out[2] = Math.sin(ang) * rad;
+        } else if (isSubOrbital) {
+          const arcSpan = 0.65 + (vLaunch / Math.max(0.1, vOrb)) * 1.4;
+          const ang = u * arcSpan;
+          const peak = rStart + Math.sin(u * Math.PI) * (0.45 + (vLaunch / Math.max(0.1, vOrb)) * 1.45);
+          out[0] = Math.cos(ang) * peak;
+          out[1] = Math.sin(u * Math.PI) * 0.4;
+          out[2] = Math.sin(ang) * peak;
+        } else {
+          const ecc = Math.min(0.62, Math.max(0, (ratio * ratio) - 1));
+          const ang = u * Math.PI * 2;
+          const rad = (rStart * (1 + ecc)) / (1 + ecc * Math.cos(ang));
+          out[0] = Math.cos(ang) * rad;
+          out[1] = Math.sin(ang) * rad * 0.16;
+          out[2] = Math.sin(ang) * rad;
+        }
+      };
+
+      const pt: [number, number, number] = [0, 0, 0];
+      for (let i = 0; i < TRAIL_N; i++) {
+        const u = (i / (TRAIL_N - 1)) * (isEscape || isSubOrbital ? phase : 1);
+        evalPoint(u, pt);
+        trailPos[i * 3] = pt[0];
+        trailPos[i * 3 + 1] = pt[1];
+        trailPos[i * 3 + 2] = pt[2];
+      }
+      trailGeo.attributes.position.needsUpdate = true;
+
+      const curPt: [number, number, number] = [0, 0, 0];
+      const nextPt: [number, number, number] = [0, 0, 0];
+      evalPoint(phase, curPt);
+      evalPoint(Math.min(1, phase + 0.015), nextPt);
+
+      rocketGroup.position.set(curPt[0], curPt[1], curPt[2]);
+      tmpDir.set(nextPt[0] - curPt[0], nextPt[1] - curPt[1], nextPt[2] - curPt[2]);
+      if (tmpDir.lengthSq() > 1e-6) {
+        tmpDir.normalize();
+        tmpQuat.setFromUnitVectors(tmpUp, tmpDir);
+        rocketGroup.quaternion.copy(tmpQuat);
+      }
+
+      vArrow.visible = showVectors;
+      gArrow.visible = showVectors;
+      vArrow.position.copy(rocketGroup.position);
+      if (tmpDir.lengthSq() > 1e-6) vArrow.setDirection(tmpDir);
+      vArrow.setLength(Math.min(2.2, 0.8 + (vLaunch / 20) * 1.4), 0.36, 0.18);
+
+      gArrow.position.copy(rocketGroup.position);
+      gArrow.setDirection(new THREE.Vector3(-curPt[0], -curPt[1], -curPt[2]).normalize());
+      gArrow.setLength(1.2, 0.32, 0.16);
+
+      const graphPoints: { x: number; y: number }[] = [];
+      const graphSecondPoints: { x: number; y: number }[] = [];
+      for (let rv = 1.5; rv <= 12.01; rv += 0.5) {
+        const vo = Math.sqrt((G_CONST * M * 1e24) / (rv * 1e6)) / 1000;
+        graphPoints.push({ x: Number(rv.toFixed(1)), y: vo * Math.SQRT2 });
+        graphSecondPoints.push({ x: Number(rv.toFixed(1)), y: vo });
+      }
+      const regime = isEscape ? 'ESCAPED' : isSubOrbital ? 'SUB-ORBITAL' : Math.abs(vLaunch - vOrb) < 0.35 ? 'CIRCULAR' : 'ELLIPTICAL';
+
+      return {
+        substitutedFormula: `v_e = √(2GM/R) = ${vEsc.toFixed(2)} km/s  |  v_o = ${vOrb.toFixed(2)} km/s  |  v = ${vLaunch.toFixed(1)} km/s`,
+        readouts: [
+          { symbol: 'v_e', label: { en: 'Escape Velocity', hi: 'पलायन वेग (v_e)' }, value: vEsc.toFixed(2), unit: 'km/s', accent: 'force' },
+          { symbol: 'v_o', label: { en: 'Orbital Velocity', hi: 'कक्षीय वेग (v_o)' }, value: vOrb.toFixed(2), unit: 'km/s', accent: 'velocity' },
+          { symbol: 'g', label: { en: 'Surface Gravity', hi: 'पृष्ठ गुरुत्व (g)' }, value: gSurf.toFixed(2), unit: 'm/s²', accent: 'momentum' },
+          { symbol: 'Path', label: { en: 'Trajectory Regime', hi: 'पथ की प्रकृति' }, value: regime, unit: '', accent: 'energy' },
+        ],
+        graphPoints,
+        graphSecondPoints,
+        graphCurrentPoint: { x: R, y: vEsc },
+        graphLegend: { primary: 'v_e(R) Solid', secondary: 'v_o(R) Dashed' },
+      };
+    },
+  };
+}
+
+// ============================================================================
+// 9. 3D GAUSS'S LAW SPHERE & ELECTRIC DIPOLE TORQUE
+// ============================================================================
+function buildGaussDipoleRig(theme: ThemeMode): SceneRig {
+  const pal = makePalette3D(theme);
+  const group = new THREE.Group();
+
+  // Central enclosed charge +q
+  const chargeMesh = new THREE.Mesh(new THREE.SphereGeometry(0.42, 20, 16), pal.solidMat());
+  group.add(chargeMesh);
+
+  // Translucent Gaussian Sphere Shell with crisp latitude/longitude wireframe
+  const gaussShell = new THREE.Mesh(
+    new THREE.SphereGeometry(2.2, 18, 12),
+    new THREE.MeshBasicMaterial({ color: pal.primaryHex, wireframe: true })
+  );
+  group.add(gaussShell);
+
+  // 14 Radial E-field Arrows piercing through the Gaussian surface (Fibonacci sphere distribution)
+  const radialArrows: THREE.ArrowHelper[] = [];
+  const N_RAYS = 14;
+  const golden = Math.PI * (3 - Math.sqrt(5));
+  for (let i = 0; i < N_RAYS; i++) {
+    const y = 1 - (i / (N_RAYS - 1)) * 2;
+    const rad = Math.sqrt(Math.max(0, 1 - y * y));
+    const phi = golden * i;
+    const dir = new THREE.Vector3(Math.cos(phi) * rad, y, Math.sin(phi) * rad).normalize();
+    const arr = new THREE.ArrowHelper(dir, dir.clone().multiplyScalar(0.55), 3.4, pal.midHex, 0.34, 0.16);
+    group.add(arr);
+    radialArrows.push(arr);
+  }
+
+  // Side Dipole Assembly (rod +q solid sphere, -q hollow/contrast sphere)
+  const dipoleGroup = new THREE.Group();
+  dipoleGroup.position.set(4.1, 0, 0);
+  const dRod = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.0, 12), pal.contrastMat());
+  const dPlus = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 14), pal.solidMat());
+  dPlus.position.y = 1.0;
+  const dMinus = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 14), pal.contrastMat());
+  dMinus.position.y = -1.0;
+  addCrispEdges(dMinus, pal.edgeMat());
+  dipoleGroup.add(dRod, dPlus, dMinus);
+  group.add(dipoleGroup);
+
+  const extEArrow = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(2.8, -1.6, 0), 2.8, pal.primaryHex, 0.38, 0.18);
+  group.add(extEArrow);
+
+  const EPS0 = 8.854e-12;
+
+  return {
+    group,
+    defaultCamPos: [2.2, 4.6, 8.6],
+    defaultTarget: [1.0, 0, 0],
+    update: (_dt, t, params, showVectors) => {
+      const q = params.q ?? 8;
+      const R = params.R ?? 1.2;
+      const Eext = params.Eext ?? 8;
+      const thetaDeg = params.theta ?? 60;
+
+      const flux = (q * 1e-6) / EPS0 / 1e5; // ×10^5 N·m²/C
+      const E_surf = (K_COULOMB * q * 1e-6) / (R * R) / 1000; // kN/C
+      const pDipole = 2.0; // ×10^-6 C·m
+      const radTheta = (thetaDeg * Math.PI) / 180;
+      const torque = pDipole * 1e-6 * (Eext * 1000) * Math.sin(radTheta) * 1000; // mN·m
+      const potEnergy = -pDipole * 1e-6 * (Eext * 1000) * Math.cos(radTheta) * 1000; // mJ
+
+      chargeMesh.scale.setScalar(0.7 + (q / 20) * 0.6);
+      gaussShell.scale.setScalar(0.55 + (R / 3.0) * 1.15);
+      gaussShell.rotation.y = t * 0.22;
+
+      radialArrows.forEach((arr) => {
+        arr.visible = showVectors;
+        arr.setLength(1.6 + (q / 20) * 2.2, 0.32, 0.15);
+      });
+
+      // Dipole rocks slightly around θ under torque
+      const wobble = Math.sin(t * 2.5) * 0.08 * Math.sin(radTheta);
+      dipoleGroup.rotation.z = -(Math.PI / 2 - radTheta + wobble);
+      extEArrow.visible = showVectors;
+
+      const graphPoints: { x: number; y: number }[] = [];
+      const graphSecondPoints: { x: number; y: number }[] = [];
+      for (let rv = 0.5; rv <= 3.01; rv += 0.1) {
+        graphPoints.push({ x: Number(rv.toFixed(1)), y: (K_COULOMB * q * 1e-6) / (rv * rv) / 1000 });
+        graphSecondPoints.push({ x: Number(rv.toFixed(1)), y: flux * 10 });
+      }
+
+      return {
+        substitutedFormula: `Φ_E = (${q}μC)/ε₀ = ${flux.toFixed(2)}×10⁵ N·m²/C  |  τ = pE·sin(${thetaDeg}°) = ${torque.toFixed(2)} mN·m`,
+        readouts: [
+          { symbol: 'Φ_E', label: { en: 'Total Flux (Const!)', hi: 'कुल फ्लक्स (नियत!)' }, value: flux.toFixed(2), unit: '×10⁵ N·m²/C', accent: 'energy' },
+          { symbol: 'E_R', label: { en: 'Field at Radius R', hi: 'त्रिज्या R पर क्षेत्र' }, value: E_surf.toFixed(1), unit: 'kN/C', accent: 'force' },
+          { symbol: 'τ', label: { en: 'Dipole Torque', hi: 'द्विध्रुव बल-आघूर्ण' }, value: torque.toFixed(2), unit: 'mN·m', accent: 'momentum' },
+          { symbol: 'U', label: { en: 'Dipole Energy', hi: 'द्विध्रुव ऊर्जा' }, value: potEnergy.toFixed(2), unit: 'mJ', accent: 'velocity' },
+        ],
+        graphPoints,
+        graphSecondPoints,
+        graphCurrentPoint: { x: R, y: E_surf },
+        graphLegend: { primary: 'Surface Field E(R) Solid', secondary: 'Constant Flux Φ_E Dashed' },
+      };
+    },
+  };
+}
+
+// ============================================================================
+// 10. 3D HELICAL SOLENOID & MAGNETIC FIELD B = μ₀nI
+// ============================================================================
+function buildSolenoidWiresRig(theme: ThemeMode): SceneRig {
+  const pal = makePalette3D(theme);
+  const group = new THREE.Group();
+
+  // Helical solenoid tube built with TubeGeometry along a CatmullRomCurve3
+  const coilPts: THREE.Vector3[] = [];
+  const turns = 12;
+  const samples = 220;
+  for (let i = 0; i <= samples; i++) {
+    const u = i / samples;
+    const ang = u * turns * Math.PI * 2;
+    coilPts.push(new THREE.Vector3(-3.8 + u * 7.6, Math.cos(ang) * 1.35, Math.sin(ang) * 1.35));
+  }
+  const helixCurve = new THREE.CatmullRomCurve3(coilPts);
+  const coilMesh = new THREE.Mesh(
+    new THREE.TubeGeometry(helixCurve, 220, 0.085, 8, false),
+    pal.solidMat()
+  );
+  group.add(coilMesh);
+
+  // Uniform interior magnetic field arrows parallel to solenoid axis (+X)
+  const bArrows: THREE.ArrowHelper[] = [];
+  const offsets: [number, number][] = [
+    [0, 0],
+    [0.55, 0],
+    [-0.55, 0],
+    [0, 0.55],
+    [0, -0.55],
+  ];
+  offsets.forEach(([y, z]) => {
+    const arr = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(-4.2, y, z), 8.6, pal.primaryHex, 0.48, 0.22);
+    group.add(arr);
+    bArrows.push(arr);
+  });
+
+  // Animated current beads gliding around the helix
+  const N_BEADS = 18;
+  const beadGeo = new THREE.SphereGeometry(0.14, 12, 10);
+  const beadMat = pal.contrastMat();
+  const beads: THREE.Mesh[] = [];
+  for (let i = 0; i < N_BEADS; i++) {
+    const b = new THREE.Mesh(beadGeo, beadMat);
+    addCrispEdges(b, pal.edgeMat());
+    group.add(b);
+    beads.push(b);
+  }
+
+  // Two parallel wires below the solenoid demonstrating F/L attraction/repulsion
+  const wire1 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 6.2, 10), pal.solidMat());
+  wire1.rotation.z = Math.PI / 2;
+  const wire2 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 6.2, 10), pal.contrastMat());
+  wire2.rotation.z = Math.PI / 2;
+  addCrispEdges(wire2, pal.edgeMat());
+  group.add(wire1, wire2);
+
+  const wf1 = new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), new THREE.Vector3(), 0.9, pal.primaryHex, 0.28, 0.14);
+  const wf2 = new THREE.ArrowHelper(new THREE.Vector3(0, 0, -1), new THREE.Vector3(), 0.9, pal.primaryHex, 0.28, 0.14);
+  group.add(wf1, wf2);
+
+  const MU0 = 4 * Math.PI * 1e-7;
+
+  return {
+    group,
+    defaultCamPos: [4.8, 3.8, 7.6],
+    defaultTarget: [0, -0.4, 0],
+    update: (_dt, t, params, showVectors) => {
+      const n = params.n ?? 800;
+      const I = params.I ?? 5;
+      const dCm = params.d ?? 4;
+      const sameDir = params.sameDir ?? 1;
+
+      const B_mT = MU0 * n * I * 1000;
+      const forcePerLen_uN = ((MU0 * I * I) / (2 * Math.PI * (dCm / 100))) * 1e6;
+
+      // Move current beads along helix curve
+      for (let i = 0; i < N_BEADS; i++) {
+        const u = (i / N_BEADS + t * (0.04 + I * 0.012)) % 1;
+        const p = helixCurve.getPointAt(u);
+        beads[i].position.copy(p);
+      }
+
+      const bLen = Math.min(9.6, 5.5 + (B_mT / 35) * 4.0);
+      bArrows.forEach((arr) => {
+        arr.visible = showVectors;
+        arr.setLength(bLen, 0.45, 0.22);
+      });
+
+      const zSep = 0.45 + (dCm / 15) * 1.1;
+      wire1.position.set(0, -2.05, -zSep);
+      wire2.position.set(0, -2.05, zSep);
+
+      const dirSign = sameDir >= 0 ? 1 : -1;
+      wf1.visible = showVectors;
+      wf2.visible = showVectors;
+      wf1.position.set(0, -2.05, -zSep);
+      wf1.setDirection(new THREE.Vector3(0, 0, dirSign));
+      wf2.position.set(0, -2.05, zSep);
+      wf2.setDirection(new THREE.Vector3(0, 0, -dirSign));
+
+      const graphPoints: { x: number; y: number }[] = [];
+      for (let iv = 0.5; iv <= 15.01; iv += 0.5) {
+        graphPoints.push({ x: Number(iv.toFixed(1)), y: MU0 * n * iv * 1000 });
+      }
+
+      return {
+        substitutedFormula: `B = μ₀·(${n})·(${I}A) = ${B_mT.toFixed(2)} mT  |  F/L = ${forcePerLen_uN.toFixed(1)} μN/m`,
+        readouts: [
+          { symbol: 'B', label: { en: 'Solenoid Field', hi: 'परिनालिका क्षेत्र (B)' }, value: B_mT.toFixed(2), unit: 'mT', accent: 'force' },
+          { symbol: 'F/L', label: { en: 'Wire Force/m', hi: 'प्रति मीटर बल' }, value: forcePerLen_uN.toFixed(1), unit: 'μN/m', accent: 'momentum' },
+          { symbol: 'Wires', label: { en: 'Wire Force Dir', hi: 'तारों की प्रकृति' }, value: sameDir >= 0 ? 'ATTRACT' : 'REPEL', unit: '', accent: 'velocity' },
+          { symbol: 'n·I', label: { en: 'Ampere-Turns/m', hi: 'एम्पीयर-फेरे/m' }, value: (n * I).toFixed(0), unit: 'A/m', accent: 'energy' },
+        ],
+        graphPoints,
+        graphCurrentPoint: { x: I, y: B_mT },
+        graphLegend: { primary: 'Solenoid Field B(I) = μ₀·n·I' },
+      };
+    },
+  };
+}
+
 function buildRigForSim(simId: string, theme: ThemeMode): SceneRig {
   switch (simId) {
     case 'em-waves':
@@ -936,6 +1329,12 @@ function buildRigForSim(simId: string, theme: ThemeMode): SceneRig {
       return buildAngularMomentumRig(theme);
     case 'coulombs-law':
       return buildCoulombRig(theme);
+    case 'escape-velocity':
+      return buildEscapeVelocityRig(theme);
+    case 'gauss-dipole':
+      return buildGaussDipoleRig(theme);
+    case 'solenoid-wires':
+      return buildSolenoidWiresRig(theme);
     default:
       return buildEMWavesRig(theme);
   }

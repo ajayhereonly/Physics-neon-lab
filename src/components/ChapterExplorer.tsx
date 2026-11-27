@@ -56,13 +56,13 @@ export function ChapterExplorer({
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-black dark:text-white">
             {language === 'hi'
-              ? 'संपूर्ण कक्षा 11–12 भौतिकी सिमुलेशन पुस्तकालय (29 अध्याय)'
-              : 'Complete Class 11–12 Physics Library (29 Chapters)'}
+              ? `संपूर्ण कक्षा 11–12 भौतिकी पुस्तकालय (${CHAPTERS.length} अध्याय · ${simulations.length} लाइव लैब)`
+              : `Complete Class 11–12 Physics Library (${CHAPTERS.length} Chapters · ${simulations.length} Live Labs)`}
           </h1>
           <p className="mt-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-300">
             {language === 'hi'
-              ? 'हर अध्याय में लाइव 2D/3D सिमुलेशन, रीयल-टाइम ग्राफ़ और 12 छात्र अभ्यास प्रश्न शामिल हैं।'
-              : 'Every NCERT Class 11–12 chapter with interactive 2D/3D simulations, live graphs, and 12 bilingual practice questions.'}
+              ? 'हर अध्याय में सभी मुख्य NCERT सूत्रों के लाइव 2D/3D सिमुलेशन, व्युत्पत्ति और 12 छात्र अभ्यास प्रश्न शामिल हैं।'
+              : 'Every NCERT Class 11–12 chapter with dedicated live formula simulations, derivations, 3D rigs, and 12 bilingual practice questions.'}
           </p>
         </div>
 
@@ -219,6 +219,9 @@ export function ChapterExplorer({
                       <div className="min-w-0">
                         <div className="text-sm font-bold truncate">
                           {getBilingualPrimary(sim.title, language)}
+                          {sim.supports3D && (
+                            <span className="ml-1.5 font-mono text-xs opacity-80">· 3D</span>
+                          )}
                         </div>
                         <div className="font-mono text-sm font-bold mt-0.5 truncate opacity-90">
                           {sim.formulaDisplay}

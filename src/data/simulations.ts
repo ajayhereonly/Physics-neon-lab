@@ -1,5 +1,7 @@
-import { ChapterInfo, PhysicsSimulation } from '../types/physics';
+import { BilingualText, ChapterInfo, PhysicsSimulation } from '../types/physics';
 import { EXTRA_SIMULATIONS } from './simulationsExtra';
+import { REMAINING_SIMULATIONS_11 } from './simulationsRemaining11';
+import { REMAINING_SIMULATIONS_12 } from './simulationsRemaining12';
 
 export const CHAPTERS: ChapterInfo[] = [
   // ================= CLASS 11 (15 CHAPTERS) =================
@@ -1590,8 +1592,13 @@ const CORE_SIMULATIONS: PhysicsSimulation[] = [
   },
 ];
 
-// Order all 29 built-in simulations cleanly to match CHAPTERS order (Class 11 Ch 01–15 → Class 12 Ch 16–29)
-const ALL_RAW_SIMS: PhysicsSimulation[] = [...CORE_SIMULATIONS, ...EXTRA_SIMULATIONS];
+// Order all 51 built-in simulations cleanly to match CHAPTERS order (Class 11 Ch 01–15 → Class 12 Ch 16–29)
+const ALL_RAW_SIMS: PhysicsSimulation[] = [
+  ...CORE_SIMULATIONS,
+  ...EXTRA_SIMULATIONS,
+  ...REMAINING_SIMULATIONS_11,
+  ...REMAINING_SIMULATIONS_12,
+];
 const chapterOrderMap = new Map(CHAPTERS.map((c, idx) => [c.id, idx]));
 export const BUILTIN_SIMULATIONS: PhysicsSimulation[] = [...ALL_RAW_SIMS].sort(
   (a, b) => (chapterOrderMap.get(a.chapterId) ?? 999) - (chapterOrderMap.get(b.chapterId) ?? 999)
@@ -1603,4 +1610,63 @@ export function getDefaultParams(sim: PhysicsSimulation): Record<string, number>
     result[v.key] = v.defaultValue;
   }
   return result;
+}
+
+export function getSimulationsByChapter(
+  chapterId: string,
+  allSims: PhysicsSimulation[] = BUILTIN_SIMULATIONS
+): PhysicsSimulation[] {
+  return allSims.filter((s) => s.chapterId === chapterId);
+}
+
+const DEFAULT_SHORT_LABELS: Record<string, BilingualText> = {
+  projectile: { en: 'Projectile Motion', hi: 'प्रक्षेप्य गति' },
+  'newtons-force': { en: 'Newton’s Law & Friction', hi: 'न्यूटन नियम व घर्षण' },
+  'angular-momentum': { en: 'Angular Momentum (L = Iω)', hi: 'कोणीय संवेग (L = Iω)' },
+  gravitation: { en: 'Universal Gravitation', hi: 'सार्वत्रिक गुरुत्वाकर्षण' },
+  fluids: { en: 'Bernoulli & Continuity', hi: 'बर्नौली व सांतत्य' },
+  thermodynamics: { en: '1st Law & P–V Curves', hi: 'प्रथम नियम व P–V' },
+  'shm-spring': { en: 'Spring–Mass SHM', hi: 'स्प्रिंग SHM' },
+  'wave-superposition': { en: 'Wave Superposition', hi: 'तरंग अध्यारोपण' },
+  'coulombs-law': { en: 'Coulomb’s Law', hi: 'कूलॉम नियम' },
+  capacitance: { en: 'Parallel-Plate Capacitor', hi: 'समांतर प्लेट संधारित्र' },
+  'ohms-law': { en: 'Ohm’s Law & Power', hi: 'ओम का नियम व शक्ति' },
+  'lorentz-force': { en: 'Lorentz Force (Cyclotron)', hi: 'लॉरेंत्ज़ बल' },
+  emi: { en: 'Faraday EMI & Generator', hi: 'फैराडे प्रेरण व जनरेटर' },
+  'thin-lens': { en: 'Thin Lens Formula', hi: 'पतले लेंस का सूत्र' },
+  'wave-optics': { en: 'Young’s Double Slit', hi: 'यंग द्वि-स्लिट (YDSE)' },
+  'dual-nature': { en: 'Photoelectric Effect', hi: 'प्रकाश-विद्युत प्रभाव' },
+  nuclei: { en: 'Radioactive Half-Life', hi: 'रेडियोधर्मी अर्ध-आयु' },
+  semiconductors: { en: 'P–N Junction Diode', hi: 'P–N संधि डायोड' },
+};
+
+export function getSimShortTabLabel(sim: PhysicsSimulation): BilingualText {
+  if (sim.shortTabLabel) return sim.shortTabLabel;
+  if (DEFAULT_SHORT_LABELS[sim.id]) return DEFAULT_SHORT_LABELS[sim.id];
+  return {
+    en: sim.title.en.split('(')[0].trim().slice(0, 28),
+    hi: sim.title.hi.split('(')[0].trim().slice(0, 28),
+  };
+}
+
+export function getComparePresetB(sim: PhysicsSimulation): { label: BilingualText; params: Record<string, number> } {
+  if (sim.comparePresetB) return sim.comparePresetB;
+  if (sim.presets && sim.presets.length > 1) {
+    return { label: sim.presets[1].label, params: { ...getDefaultParams(sim), ...sim.presets[1].params } };
+  }
+  const base = getDefaultParams(sim);
+  const firstVar = sim.variables[0];
+  if (firstVar) {
+    const span = firstVar.max - firstVar.min;
+    const shifted =
+      firstVar.defaultValue + span * 0.35 <= firstVar.max
+        ? firstVar.defaultValue + span * 0.35
+        : Math.max(firstVar.min, firstVar.defaultValue - span * 0.35);
+    const snapped = Math.round(shifted / firstVar.step) * firstVar.step;
+    base[firstVar.key] = Number(snapped.toFixed(4));
+  }
+  return {
+    label: { en: 'Variant B', hi: 'परिदृश्य B' },
+    params: base,
+  };
 }

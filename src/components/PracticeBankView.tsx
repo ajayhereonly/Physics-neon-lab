@@ -4,14 +4,17 @@ import {
   CheckCircle2,
   Lightbulb,
   Play,
+  Printer,
   RotateCcw,
   Search,
+  Trophy,
   XCircle,
 } from 'lucide-react';
 import { CHAPTERS } from '../data/simulations';
 import { ALL_PRACTICE_QUESTIONS, getQuestionsByChapter } from '../data/questionBank';
 import { LanguageMode, QuestionDifficulty } from '../types/physics';
 import { getBilingualPrimary, getBilingualSecondary, UI_TEXT } from '../utils/bilingual';
+import { ClassroomQuizRunner } from './ClassroomQuizRunner';
 
 const STORAGE_QUIZ_ANSWERS = 'physicalive_quiz_answers_v1';
 
@@ -43,6 +46,8 @@ export function PracticeBankView({
     const exists = CHAPTERS.some((c) => c.id === initialChapterId);
     return exists ? initialChapterId : CHAPTERS[0].id;
   });
+  const [practiceMode, setPracticeMode] = useState<'study' | 'quiz'>('study');
+  const [printWithKey, setPrintWithKey] = useState<boolean>(false);
   const [classFilter, setClassFilter] = useState<'all' | 'Class 11' | 'Class 12'>('all');
   const [difficultyFilter, setDifficultyFilter] = useState<'all' | QuestionDifficulty>('all');
   const [chapterSearch, setChapterSearch] = useState('');
@@ -155,8 +160,25 @@ export function PracticeBankView({
 
   return (
     <div className="max-w-[1440px] mx-auto px-4 sm:px-6 py-7 space-y-6">
+      {/* Print-Only Formal Exam Worksheet Header */}
+      <div className="print-only pb-4 mb-4 border-b-2 border-black">
+        <div className="flex items-baseline justify-between gap-4">
+          <h1 className="text-xl font-extrabold text-black">
+            PhysicaLive · Chapter {selectedChapter.number}: {getBilingualPrimary(selectedChapter.name, language)}
+          </h1>
+          <span className="font-mono text-xs font-bold text-black">
+            {selectedChapter.classLevel} · {filteredQuestions.length} Questions · {printWithKey ? 'Teacher Answer Key' : 'Student Worksheet'}
+          </span>
+        </div>
+        <div className="mt-2 grid grid-cols-3 gap-4 text-xs font-mono font-bold text-black">
+          <div>Student Name: _____________________</div>
+          <div>Roll No: ___________</div>
+          <div>Date: ___________</div>
+        </div>
+      </div>
+
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-5 border-b-2 border-black dark:border-white">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-5 border-b-2 border-black dark:border-white no-print">
         <div>
           <div className="text-xs font-mono font-bold text-neutral-700 dark:text-neutral-300">
             <span>{CHAPTERS.length} Chapters (Class 11–12)</span>
@@ -171,38 +193,76 @@ export function PracticeBankView({
           </div>
           <h1 className="mt-1 text-2xl sm:text-3xl font-extrabold tracking-tight text-black dark:text-white">
             {language === 'hi'
-              ? 'कक्षा 11–12 भौतिकी अभ्यास प्रश्न बैंक'
-              : 'Class 11–12 Physics Practice Question Bank'}
+              ? 'कक्षा 11–12 भौतिकी अभ्यास प्रश्न बैंक व लाइव क्विज़'
+              : 'Class 11–12 Physics Practice Bank & Classroom Quiz'}
           </h1>
           <p className="mt-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-300">
             {language === 'hi'
-              ? 'प्रत्येक अध्याय में 12 बोर्ड, संकल्पना और JEE/NEET स्तर के प्रश्न — तुरंत उत्तर जांच, संकेत और विस्तृत हल सहित।'
-              : '12 bilingual Board, Concept, and JEE/NEET questions per chapter with instant answer check, hints, and step-by-step solutions.'}
+              ? 'प्रत्येक अध्याय में 12 बोर्ड, संकल्पना और JEE/NEET स्तर के प्रश्न — तुरंत जांच, कक्षा क्विज़ टाइमर और A4 प्रिंट वर्कशीट सहित।'
+              : '12 bilingual Board, Concept, and JEE/NEET questions per chapter with instant check, timed Classroom Quiz mode, and A4 printable B&W worksheets.'}
           </p>
         </div>
 
-        <div className="flex items-center gap-1 p-1 rounded-lg border-2 border-black dark:border-white self-start md:self-auto">
-          {(['all', 'Class 11', 'Class 12'] as const).map((lvl) => (
+        <div className="flex flex-wrap items-center gap-3 self-start md:self-auto">
+          {/* Study Bank <-> Classroom Quiz Mode Switcher */}
+          <div className="flex items-center gap-1 p-1 rounded-lg border-2 border-black dark:border-white">
             <button
-              key={lvl}
               type="button"
-              onClick={() => setClassFilter(lvl)}
+              onClick={() => setPracticeMode('study')}
               className={`px-3.5 py-1.5 text-xs font-bold rounded-md transition-colors whitespace-nowrap cursor-pointer ${
-                classFilter === lvl
+                practiceMode === 'study'
                   ? 'bg-black text-white dark:bg-white dark:text-black'
                   : 'text-black dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900'
               }`}
             >
-              {lvl === 'all' ? (language === 'hi' ? 'सभी (29)' : 'All (29)') : lvl}
+              {getBilingualPrimary(UI_TEXT.studyBank, language)}
             </button>
-          ))}
+            <button
+              type="button"
+              onClick={() => setPracticeMode('quiz')}
+              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-md transition-colors whitespace-nowrap cursor-pointer ${
+                practiceMode === 'quiz'
+                  ? 'bg-black text-white dark:bg-white dark:text-black'
+                  : 'text-black dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900'
+              }`}
+            >
+              <Trophy className="w-3.5 h-3.5" />
+              <span>{getBilingualPrimary(UI_TEXT.classroomQuiz, language)}</span>
+            </button>
+          </div>
+
+          {practiceMode === 'study' && (
+            <div className="flex items-center gap-1 p-1 rounded-lg border-2 border-black dark:border-white">
+              {(['all', 'Class 11', 'Class 12'] as const).map((lvl) => (
+                <button
+                  key={lvl}
+                  type="button"
+                  onClick={() => setClassFilter(lvl)}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors whitespace-nowrap cursor-pointer ${
+                    classFilter === lvl
+                      ? 'bg-black text-white dark:bg-white dark:text-black'
+                      : 'text-black dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900'
+                  }`}
+                >
+                  {lvl === 'all' ? (language === 'hi' ? 'सभी (29)' : 'All (29)') : lvl}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Main Split Layout: Chapter Selector Sidebar + 12 Questions List */}
+      {practiceMode === 'quiz' ? (
+        <ClassroomQuizRunner
+          chapters={CHAPTERS}
+          initialChapterId={selectedChapter.id}
+          language={language}
+        />
+      ) : (
+      /* Main Split Layout: Chapter Selector Sidebar + 12 Questions List */
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Chapter List */}
-        <aside className="lg:col-span-4 rounded-xl border-2 border-black dark:border-white bg-white dark:bg-black overflow-hidden">
+        <aside className="lg:col-span-4 rounded-xl border-2 border-black dark:border-white bg-white dark:bg-black overflow-hidden no-print">
           <div className="p-3.5 border-b-2 border-black dark:border-white">
             <div className="relative">
               <Search className="w-4 h-4 text-black dark:text-white absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -278,7 +338,7 @@ export function PracticeBankView({
         {/* Right Active Chapter Question Feed */}
         <div className="lg:col-span-8 space-y-5">
           {/* Active Chapter Action Banner */}
-          <section className="rounded-xl border-2 border-black dark:border-white bg-white dark:bg-black p-5 space-y-4">
+          <section className="rounded-xl border-2 border-black dark:border-white bg-white dark:bg-black p-5 space-y-4 no-print">
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
               <div>
                 <div className="text-xs font-mono font-bold text-neutral-700 dark:text-neutral-300">
@@ -315,12 +375,45 @@ export function PracticeBankView({
                 </button>
                 <button
                   type="button"
+                  onClick={() => window.print()}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg border-2 border-black dark:border-white text-black dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors whitespace-nowrap cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>{getBilingualPrimary(UI_TEXT.printWorksheet, language)}</span>
+                </button>
+                <button
+                  type="button"
                   onClick={handleResetChapter}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg border-2 border-black dark:border-white text-black dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-colors whitespace-nowrap cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg border-2 border-neutral-400 dark:border-neutral-600 text-black dark:text-white hover:border-black dark:hover:border-white transition-colors whitespace-nowrap cursor-pointer"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
-                  <span>{language === 'hi' ? 'अध्याय रीसेट' : 'Reset Chapter Quiz'}</span>
+                  <span>{language === 'hi' ? 'रीसेट' : 'Reset'}</span>
                 </button>
+              </div>
+            </div>
+
+            {/* Print Mode Option Row */}
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-neutral-700 dark:text-neutral-300">
+              <span>{language === 'hi' ? 'प्रिंट विकल्प:' : 'Print Export Option:'}</span>
+              <div className="flex items-center gap-3">
+                <label className="inline-flex items-center gap-1.5 cursor-pointer text-black dark:text-white">
+                  <input
+                    type="radio"
+                    name="print-mode"
+                    checked={!printWithKey}
+                    onChange={() => setPrintWithKey(false)}
+                  />
+                  <span>{language === 'hi' ? 'केवल छात्र प्रश्नपत्र' : 'Student Test Paper Only'}</span>
+                </label>
+                <label className="inline-flex items-center gap-1.5 cursor-pointer text-black dark:text-white">
+                  <input
+                    type="radio"
+                    name="print-mode"
+                    checked={printWithKey}
+                    onChange={() => setPrintWithKey(true)}
+                  />
+                  <span>{language === 'hi' ? 'उत्तर कुंजी व हल सहित' : 'Include Answer Key & Solutions'}</span>
+                </label>
               </div>
             </div>
 
@@ -381,7 +474,7 @@ export function PracticeBankView({
               return (
                 <article
                   key={q.id}
-                  className="rounded-xl border-2 border-black dark:border-white bg-white dark:bg-black p-5 space-y-4"
+                  className="rounded-xl border-2 border-black dark:border-white bg-white dark:bg-black p-5 space-y-4 print-card"
                 >
                   {/* Question Metadata Row */}
                   <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-mono font-bold text-neutral-700 dark:text-neutral-300">
@@ -485,7 +578,7 @@ export function PracticeBankView({
                   </div>
 
                   {/* Hint & Solution Controls */}
-                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <div className="flex flex-wrap items-center gap-2 pt-1 no-print">
                     <button
                       type="button"
                       onClick={() =>
@@ -520,7 +613,7 @@ export function PracticeBankView({
                   </div>
 
                   {isHintShown && (
-                    <div className="p-3.5 rounded-lg border-2 border-dashed border-black dark:border-white text-sm text-black dark:text-white leading-relaxed">
+                    <div className="p-3.5 rounded-lg border-2 border-dashed border-black dark:border-white text-sm text-black dark:text-white leading-relaxed no-print">
                       <div className="font-mono text-xs font-bold mb-1">
                         {language === 'hi' ? 'संकेत (HINT):' : 'HINT:'}
                       </div>
@@ -532,7 +625,7 @@ export function PracticeBankView({
                   )}
 
                   {isSolutionShown && (
-                    <div className="p-3.5 rounded-lg border-2 border-black dark:border-white bg-neutral-100 dark:bg-neutral-900 text-sm text-black dark:text-white leading-relaxed">
+                    <div className="p-3.5 rounded-lg border-2 border-black dark:border-white bg-neutral-100 dark:bg-neutral-900 text-sm text-black dark:text-white leading-relaxed no-print">
                       <div className="font-mono text-xs font-bold mb-1">
                         {language === 'hi'
                           ? `विस्तृत हल · सही उत्तर: विकल्प ${OPTION_LETTERS[q.correctIndex]}`
@@ -544,12 +637,20 @@ export function PracticeBankView({
                       )}
                     </div>
                   )}
+
+                  {printWithKey && (
+                    <div className="print-only pt-2 border-t border-black text-xs text-black">
+                      <strong>Answer: {OPTION_LETTERS[q.correctIndex]}</strong> —{' '}
+                      {getBilingualPrimary(q.solution, language)}
+                    </div>
+                  )}
                 </article>
               );
             })}
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

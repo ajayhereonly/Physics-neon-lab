@@ -112,3 +112,55 @@ input[type="range"].physics-slider::-moz-range-thumb {
     animation-duration: 0.01ms !important;
   }
 }
+
+/* Pure Black & White Classroom Worksheet & Formula Sheet Print Styles */
+.print-only {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 14mm;
+  }
+
+  html,
+  body,
+  .dark,
+  .dark body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    letter-spacing: 0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .no-print,
+  header,
+  footer,
+  nav {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .print-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    border: 1.5px solid #000000 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+
+  tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

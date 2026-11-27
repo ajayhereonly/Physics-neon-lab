@@ -19,6 +19,7 @@ import {
 } from '../types/physics';
 import { getQuestionsByChapter } from '../data/questionBank';
 import { getBilingualPrimary, getBilingualSecondary, UI_TEXT } from '../utils/bilingual';
+import { DeriveSolvePanel } from './DeriveSolvePanel';
 
 const OPTION_LETTERS = ['A', 'B', 'C', 'D'];
 
@@ -49,7 +50,7 @@ export function ControlConceptDeck({
   onRunProof,
   onOpenFullPractice,
 }: ControlConceptDeckProps) {
-  const [deckTab, setDeckTab] = useState<'whatif' | 'concept' | 'practice'>('whatif');
+  const [deckTab, setDeckTab] = useState<'whatif' | 'concept' | 'derive' | 'practice'>('whatif');
   const [revealedHints, setRevealedHints] = useState<Record<string, boolean>>({});
   const [revealedAnswers, setRevealedAnswers] = useState<Record<string, boolean>>({});
   const [practiceIdx, setPracticeIdx] = useState(0);
@@ -214,13 +215,13 @@ export function ControlConceptDeck({
         </section>
       )}
 
-      {/* Teaching Deck: What-If Prompts, Concept Guide & Practice (12) */}
+      {/* Teaching Deck: What-If Prompts, Concept Guide, Derive & Solve & Practice (12) */}
       <section className="rounded-xl border-2 border-black dark:border-white bg-white dark:bg-black overflow-hidden">
-        <div className="flex items-center gap-1 p-2 border-b-2 border-black dark:border-white">
+        <div className="grid grid-cols-2 sm:grid-cols-4 items-center gap-1 p-2 border-b-2 border-black dark:border-white">
           <button
             type="button"
             onClick={() => setDeckTab('whatif')}
-            className={`flex-1 px-2.5 py-2 text-xs sm:text-sm font-bold rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
+            className={`px-2 py-2 text-xs font-bold rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
               deckTab === 'whatif'
                 ? 'bg-black text-white dark:bg-white dark:text-black'
                 : 'text-black dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900'
@@ -231,7 +232,7 @@ export function ControlConceptDeck({
           <button
             type="button"
             onClick={() => setDeckTab('concept')}
-            className={`flex-1 px-2.5 py-2 text-xs sm:text-sm font-bold rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
+            className={`px-2 py-2 text-xs font-bold rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
               deckTab === 'concept'
                 ? 'bg-black text-white dark:bg-white dark:text-black'
                 : 'text-black dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900'
@@ -239,11 +240,22 @@ export function ControlConceptDeck({
           >
             {getBilingualPrimary(UI_TEXT.conceptGuide, language)}
           </button>
+          <button
+            type="button"
+            onClick={() => setDeckTab('derive')}
+            className={`px-2 py-2 text-xs font-bold rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
+              deckTab === 'derive'
+                ? 'bg-black text-white dark:bg-white dark:text-black'
+                : 'text-black dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900'
+            }`}
+          >
+            {getBilingualPrimary(UI_TEXT.deriveSolveTab, language)}
+          </button>
           {chapterQuestions.length > 0 && (
             <button
               type="button"
               onClick={() => setDeckTab('practice')}
-              className={`flex-1 px-2.5 py-2 text-xs sm:text-sm font-bold rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
+              className={`px-2 py-2 text-xs font-bold rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
                 deckTab === 'practice'
                   ? 'bg-black text-white dark:bg-white dark:text-black'
                   : 'text-black dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900'
@@ -379,6 +391,12 @@ export function ControlConceptDeck({
                 )}
               </div>
             </div>
+          ) : deckTab === 'derive' ? (
+            <DeriveSolvePanel
+              simulation={simulation}
+              stageParams={params}
+              language={language}
+            />
           ) : (
             (() => {
               const safeIdx = Math.min(practiceIdx, Math.max(0, chapterQuestions.length - 1));

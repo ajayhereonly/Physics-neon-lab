@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Box,
+  Columns2,
   Compass,
   Contrast,
   Grid,
@@ -12,7 +13,13 @@ import {
   RotateCcw,
   SkipForward,
 } from 'lucide-react';
-import { BUILTIN_SIMULATIONS, CHAPTERS, getDefaultParams } from './data/simulations';
+import {
+  BUILTIN_SIMULATIONS,
+  CHAPTERS,
+  getDefaultParams,
+  getSimShortTabLabel,
+  getSimulationsByChapter,
+} from './data/simulations';
 import { ALL_PRACTICE_QUESTIONS } from './data/questionBank';
 import {
   AppView,
@@ -35,6 +42,7 @@ import { PracticeBankView } from './components/PracticeBankView';
 import { CustomFormulaLab } from './components/CustomFormulaLab';
 import { FormulaSheetView } from './components/FormulaSheetView';
 import { ChalkboardToolbar } from './components/ChalkboardToolbar';
+import { CompareStage } from './components/CompareStage';
 
 const STORAGE_CUSTOM_SIMS = 'physicalive_custom_sims_v1';
 const STORAGE_POLARITY = 'physicalive_bw_polarity';
@@ -102,8 +110,9 @@ export default function App() {
   const [telemetry, setTelemetry] = useState<LiveSimTelemetry | null>(null);
   const [activeProofId, setActiveProofId] = useState<string | null>(null);
 
-  // Presenter & Monochrome Chalkboard state
+  // Presenter, Compare Mode & Monochrome Chalkboard state
   const [isPresenterMode, setIsPresenterMode] = useState(false);
+  const [isCompareMode, setIsCompareMode] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawTool, setDrawTool] = useState<DrawingTool>('pen');
   const [drawTone, setDrawTone] = useState<ChalkTone>('primary');
@@ -297,6 +306,19 @@ export default function App() {
     [activeSimulation.chapterId]
   );
 
+  const activeChapterSims = useMemo(
+    () =>
+      activeSimulation.isCustom
+        ? []
+        : getSimulationsByChapter(activeSimulation.chapterId, BUILTIN_SIMULATIONS),
+    [activeSimulation.isCustom, activeSimulation.chapterId]
+  );
+
+  const count3DRigs = useMemo(
+    () => BUILTIN_SIMULATIONS.filter((s) => s.supports3D).length,
+    []
+  );
+
   const handleTogglePresenter = () => {
     setIsPresenterMode((prev) => {
       const next = !prev;
@@ -312,7 +334,7 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col bg-white text-black dark:bg-black dark:text-white">
       {/* Strict 3-Zone Top Bar Contract — Pure B&W Projector Contrast */}
-      <header className="sticky top-0 z-30 border-b-2 border-black dark:border-white bg-white dark:bg-black">
+      <header className="sticky top-0 z-30 border-b-2 border-black dark:border-white bg-white dark:bg-black no-print">
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 h-15 flex items-center justify-between gap-8">
           {/* Zone 1: Single-line Brand Wordmark */}
           <button
@@ -532,43 +554,104 @@ export default function App() {
               </div>
             </div>
 
-            {/* Instant Formula Quick-Switcher */}
+            {/* 29-Chapter Quick-Switcher (+ Saved Custom AI Labs) */}
             {!isPresenterMode && (
               <div className="flex items-center gap-2 overflow-x-auto pb-1.5 lab-scroll">
-                {allSimulations.map((sim) => {
+                {CHAPTERS.map((ch) => {
+                  const chSims = getSimulationsByChapter(ch.id, BUILTIN_SIMULATIONS);
+                  const isCurrentChapter = !activeSimulation.isCustom && activeSimulation.chapterId === ch.id;
+                  return (
+                    <button
+                      key={ch.id}
+                      type="button"
+                      onClick={() => chSims[0] && selectSimulation(chSims[0].id)}
+                      className={`px-3 py-1.5 text-xs font-bold rounded-lg border-2 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                        isCurrentChapter
+                          ? 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-black'
+                          : 'border-neutral-400 dark:border-neutral-600 bg-white dark:bg-black text-black dark:text-white hover:border-black dark:hover:border-white'
+                      }`}
+                    >
+                      <span className="font-mono mr-1 opacity-75">{ch.number}</span>
+                      {getBilingualPrimary(ch.name, language).split('(')[0].trim()}
+                      {chSims.length > 1 && (
+                        <span className="ml-1 font-mono opacity-75">({chSims.length})</span>
+                      )}
+                    </button>
+                  );
+                })}
+                {customSimulations.map((sim) => {
                   const active = sim.id === activeSimulation.id;
                   return (
                     <button
                       key={sim.id}
                       type="button"
                       onClick={() => selectSimulation(sim.id)}
-                      className={`px-3.5 py-2 text-xs font-bold rounded-lg border-2 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                      className={`px-3 py-1.5 text-xs font-bold rounded-lg border-2 border-dashed transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                         active
                           ? 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-black'
-                          : 'border-neutral-400 dark:border-neutral-600 bg-white dark:bg-black text-black dark:text-white hover:border-black dark:hover:border-white'
+                          : 'border-black dark:border-white bg-white dark:bg-black text-black dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900'
                       }`}
                     >
-                      {getBilingualPrimary(sim.title, language).split('(')[0].trim()}
+                      AI · {getBilingualPrimary(sim.title, language).split('(')[0].trim()}
                     </button>
                   );
                 })}
               </div>
             )}
 
-            {/* Two-Zone Sandbox Layout */}
+            {/* Sub-Formula Switcher Tab Strip (Shown whenever active chapter has 2+ formulas!) */}
+            {activeChapterSims.length > 1 && (
+              <div
+                className="flex flex-wrap items-center gap-2 p-2 rounded-xl border-2 border-black dark:border-white bg-neutral-100 dark:bg-neutral-900"
+                role="tablist"
+                aria-label="Chapter formula tabs"
+              >
+                <span className="px-2 text-xs font-mono font-extrabold text-neutral-700 dark:text-neutral-300 uppercase">
+                  Ch {activeChapter?.number} {language === 'hi' ? 'सूत्र:' : 'Formulas:'}
+                </span>
+                {activeChapterSims.map((sim) => {
+                  const isTabActive = sim.id === activeSimulation.id;
+                  return (
+                    <button
+                      key={sim.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={isTabActive}
+                      onClick={() => selectSimulation(sim.id)}
+                      className={`px-3.5 py-1.5 text-xs sm:text-sm font-extrabold rounded-lg border-2 transition-colors whitespace-nowrap cursor-pointer ${
+                        isTabActive
+                          ? 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-black'
+                          : 'border-transparent bg-white dark:bg-black text-black dark:text-white hover:border-black dark:hover:border-white'
+                      }`}
+                    >
+                      {getBilingualPrimary(getSimShortTabLabel(sim), language)}
+                      {sim.supports3D && (
+                        <span className="ml-1.5 font-mono text-[11px] opacity-80">· 3D</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Two-Zone Sandbox Layout (or Full-Width Side-by-Side Compare Mode) */}
             <div
               className={
-                isPresenterMode
-                  ? 'grid grid-cols-1 xl:grid-cols-12 gap-5 items-start'
-                  : 'grid grid-cols-1 lg:grid-cols-12 gap-6 items-start'
+                isCompareMode
+                  ? 'space-y-4'
+                  : isPresenterMode
+                    ? 'grid grid-cols-1 xl:grid-cols-12 gap-5 items-start'
+                    : 'grid grid-cols-1 lg:grid-cols-12 gap-6 items-start'
               }
             >
               {/* LEFT / MAIN INTERACTIVE STAGE */}
               <div
                 className={
-                  isPresenterMode
-                    ? 'xl:col-span-9 space-y-4'
-                    : 'lg:col-span-8 space-y-4'
+                  isCompareMode
+                    ? 'space-y-4'
+                    : isPresenterMode
+                      ? 'xl:col-span-9 space-y-4'
+                      : 'lg:col-span-8 space-y-4'
                 }
               >
                 {/* Extra-Bold Live Substituted Formula Strip */}
@@ -582,7 +665,11 @@ export default function App() {
                     </div>
                   </div>
                   <div className="font-mono text-sm sm:text-base font-bold tabular-nums bg-black text-white dark:bg-white dark:text-black rounded-lg px-4 py-2.5 overflow-x-auto max-w-full">
-                    {telemetry?.substitutedFormula ?? activeSimulation.formulaDisplay}
+                    {isCompareMode
+                      ? language === 'hi'
+                        ? 'तुलना मोड सक्रिय: परिदृश्य A बनाम B'
+                        : 'SIDE-BY-SIDE COMPARE ACTIVE (A vs B)'
+                      : telemetry?.substitutedFormula ?? activeSimulation.formulaDisplay}
                   </div>
                 </div>
 
@@ -648,7 +735,33 @@ export default function App() {
 
                   {/* Overlay Toggles */}
                   <div className="flex flex-wrap items-center gap-2">
-                    {activeSimulation.supports3D && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCompareMode((prev) => {
+                          const next = !prev;
+                          if (next) {
+                            setUse3D(false);
+                            setIsDrawing(false);
+                          }
+                          return next;
+                        });
+                      }}
+                      className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg border-2 transition-colors whitespace-nowrap cursor-pointer ${
+                        isCompareMode
+                          ? 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-black'
+                          : 'border-black dark:border-white bg-white dark:bg-black text-black dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900'
+                      }`}
+                    >
+                      <Columns2 className="w-3.5 h-3.5" />
+                      <span>
+                        {isCompareMode
+                          ? getBilingualPrimary(UI_TEXT.exitCompare, language)
+                          : getBilingualPrimary(UI_TEXT.compareMode, language)}
+                      </span>
+                    </button>
+
+                    {activeSimulation.supports3D && !isCompareMode && (
                       <button
                         type="button"
                         onClick={() => setUse3D((v) => !v)}
@@ -693,23 +806,25 @@ export default function App() {
                       <span>{getBilingualPrimary(UI_TEXT.grid, language)}</span>
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={() => setIsDrawing((d) => !d)}
-                      className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg border-2 transition-colors whitespace-nowrap cursor-pointer ${
-                        isDrawing
-                          ? 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-black underline underline-offset-4'
-                          : 'border-black dark:border-white bg-white dark:bg-black text-black dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900'
-                      }`}
-                    >
-                      <PenTool className="w-3.5 h-3.5" />
-                      <span>{getBilingualPrimary(UI_TEXT.draw, language)}</span>
-                    </button>
+                    {!isCompareMode && (
+                      <button
+                        type="button"
+                        onClick={() => setIsDrawing((d) => !d)}
+                        className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg border-2 transition-colors whitespace-nowrap cursor-pointer ${
+                          isDrawing
+                            ? 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-black underline underline-offset-4'
+                            : 'border-black dark:border-white bg-white dark:bg-black text-black dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900'
+                        }`}
+                      >
+                        <PenTool className="w-3.5 h-3.5" />
+                        <span>{getBilingualPrimary(UI_TEXT.draw, language)}</span>
+                      </button>
+                    )}
                   </div>
                 </div>
 
                 {/* Monochrome Chalkboard Toolbar */}
-                {isDrawing && (
+                {isDrawing && !isCompareMode && (
                   <ChalkboardToolbar
                     tool={drawTool}
                     tone={drawTone}
@@ -723,11 +838,12 @@ export default function App() {
                   />
                 )}
 
-                {/* 60fps Pure B&W Physics Canvas (2D or Interactive 3D Three.js Stage) + Chalkboard */}
-                {activeSimulation.supports3D && use3D ? (
-                  <Simulation3DCanvas
+                {/* SIDE-BY-SIDE COMPARE STAGE OR SINGLE 2D/3D STAGE */}
+                {isCompareMode ? (
+                  <CompareStage
                     simulation={activeSimulation}
-                    params={params}
+                    paramsA={params}
+                    onParamAChange={handleParamChange}
                     isPlaying={isPlaying}
                     simSpeed={simSpeed}
                     showVectors={showVectors}
@@ -736,62 +852,82 @@ export default function App() {
                     language={language}
                     resetToken={resetToken}
                     stepToken={stepToken}
-                    isDrawing={isDrawing}
-                    drawTool={drawTool}
-                    drawTone={drawTone}
-                    strokes={strokes}
-                    onAddStroke={(stroke) => setStrokes((prev) => [...prev, stroke])}
-                    onTelemetry={setTelemetry}
-                    tall={isPresenterMode}
                   />
                 ) : (
-                  <SimulationCanvas
-                    simulation={activeSimulation}
-                    params={params}
-                    isPlaying={isPlaying}
-                    simSpeed={simSpeed}
-                    showVectors={showVectors}
-                    showGrid={showGrid}
-                    theme={theme}
-                    resetToken={resetToken}
-                    stepToken={stepToken}
-                    isDrawing={isDrawing}
-                    drawTool={drawTool}
-                    drawTone={drawTone}
-                    strokes={strokes}
-                    onAddStroke={(stroke) => setStrokes((prev) => [...prev, stroke])}
-                    onTelemetry={setTelemetry}
-                    tall={isPresenterMode}
-                  />
-                )}
+                  <>
+                    {/* 60fps Pure B&W Physics Canvas (2D or Interactive 3D Three.js Stage) + Chalkboard */}
+                    {activeSimulation.supports3D && use3D ? (
+                      <Simulation3DCanvas
+                        simulation={activeSimulation}
+                        params={params}
+                        isPlaying={isPlaying}
+                        simSpeed={simSpeed}
+                        showVectors={showVectors}
+                        showGrid={showGrid}
+                        theme={theme}
+                        language={language}
+                        resetToken={resetToken}
+                        stepToken={stepToken}
+                        isDrawing={isDrawing}
+                        drawTool={drawTool}
+                        drawTone={drawTone}
+                        strokes={strokes}
+                        onAddStroke={(stroke) => setStrokes((prev) => [...prev, stroke])}
+                        onTelemetry={setTelemetry}
+                        tall={isPresenterMode}
+                      />
+                    ) : (
+                      <SimulationCanvas
+                        simulation={activeSimulation}
+                        params={params}
+                        isPlaying={isPlaying}
+                        simSpeed={simSpeed}
+                        showVectors={showVectors}
+                        showGrid={showGrid}
+                        theme={theme}
+                        resetToken={resetToken}
+                        stepToken={stepToken}
+                        isDrawing={isDrawing}
+                        drawTool={drawTool}
+                        drawTone={drawTone}
+                        strokes={strokes}
+                        onAddStroke={(stroke) => setStrokes((prev) => [...prev, stroke])}
+                        onTelemetry={setTelemetry}
+                        tall={isPresenterMode}
+                      />
+                    )}
 
-                {/* High-Contrast B&W Real-Time Graph */}
-                <LiveGraph
-                  telemetry={telemetry}
-                  title={getBilingualPrimary(activeSimulation.graphTitle, language)}
-                  xLabel={activeSimulation.graphXLabel}
-                  yLabel={activeSimulation.graphYLabel}
-                  theme={theme}
-                  compact={isPresenterMode}
-                />
+                    {/* High-Contrast B&W Real-Time Graph */}
+                    <LiveGraph
+                      telemetry={telemetry}
+                      title={getBilingualPrimary(activeSimulation.graphTitle, language)}
+                      xLabel={activeSimulation.graphXLabel}
+                      yLabel={activeSimulation.graphYLabel}
+                      theme={theme}
+                      compact={isPresenterMode}
+                    />
+                  </>
+                )}
               </div>
 
               {/* RIGHT CONTROL & CONCEPT DECK */}
-              <div className={isPresenterMode ? 'xl:col-span-3' : 'lg:col-span-4'}>
-                <ControlConceptDeck
-                  simulation={activeSimulation}
-                  params={params}
-                  telemetry={telemetry}
-                  language={language}
-                  theme={theme}
-                  activeProofId={activeProofId}
-                  onParamChange={handleParamChange}
-                  onApplyParams={handleApplyParams}
-                  onResetDefaults={handleResetDefaults}
-                  onRunProof={handleRunProof}
-                  onOpenFullPractice={openPracticeForChapter}
-                />
-              </div>
+              {!isCompareMode && (
+                <div className={isPresenterMode ? 'xl:col-span-3' : 'lg:col-span-4'}>
+                  <ControlConceptDeck
+                    simulation={activeSimulation}
+                    params={params}
+                    telemetry={telemetry}
+                    language={language}
+                    theme={theme}
+                    activeProofId={activeProofId}
+                    onParamChange={handleParamChange}
+                    onApplyParams={handleApplyParams}
+                    onResetDefaults={handleResetDefaults}
+                    onRunProof={handleRunProof}
+                    onOpenFullPractice={openPracticeForChapter}
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -799,13 +935,13 @@ export default function App() {
 
       {/* Quiet Monochrome Footer */}
       {!isPresenterMode && (
-        <footer className="border-t-2 border-black dark:border-white py-5 px-4 sm:px-6 mt-8">
+        <footer className="border-t-2 border-black dark:border-white py-5 px-4 sm:px-6 mt-8 no-print">
           <div className="max-w-[1440px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs font-bold text-neutral-700 dark:text-neutral-300">
             <span>
               PhysicaLive · High-Contrast Projector Edition (Class 11–12 Physics)
             </span>
             <span>
-              {CHAPTERS.length} Chapters (Class 11–12) · {ALL_PRACTICE_QUESTIONS.length} Practice Qs · 3D WebGL
+              {CHAPTERS.length} Chapters · {BUILTIN_SIMULATIONS.length} Live Labs · {ALL_PRACTICE_QUESTIONS.length} Practice Qs · {count3DRigs} 3D WebGL
             </span>
           </div>
         </footer>

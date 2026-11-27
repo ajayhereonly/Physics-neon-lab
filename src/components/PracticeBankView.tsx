@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   BookOpen,
+  Box,
   CheckCircle2,
   Lightbulb,
   Play,
@@ -11,10 +12,10 @@ import {
   Trophy,
   XCircle,
 } from 'lucide-react';
-import { CHAPTERS } from '../data/simulations';
+import { BUILTIN_SIMULATIONS, CHAPTERS } from '../data/simulations';
 import { ALL_PRACTICE_QUESTIONS, getQuestionsByChapter } from '../data/questionBank';
 import { getAirforcePyqsByChapter } from '../data/airforceXBoosters';
-import { LanguageMode, QuestionDifficulty } from '../types/physics';
+import { AutoFixBannerData, LanguageMode, QuestionDifficulty } from '../types/physics';
 import { getBilingualPrimary, getBilingualSecondary, UI_TEXT } from '../utils/bilingual';
 import { ClassroomQuizRunner } from './ClassroomQuizRunner';
 import { AudioControlStrip } from './AudioControlStrip';
@@ -26,6 +27,7 @@ interface PracticeBankViewProps {
   initialChapterId: string;
   language: LanguageMode;
   onLaunchChapterSim: (chapterId: string) => void;
+  onAutoFixConcept?: (data: AutoFixBannerData) => void;
   onOpenAirforceHub?: () => void;
 }
 
@@ -46,6 +48,7 @@ export function PracticeBankView({
   initialChapterId,
   language,
   onLaunchChapterSim,
+  onAutoFixConcept,
   onOpenAirforceHub,
 }: PracticeBankViewProps) {
   const [selectedChapterId, setSelectedChapterId] = useState<string>(() => {
@@ -622,6 +625,24 @@ export function PracticeBankView({
                                 : 'Show 20-Sec Shortcut & Solution'}
                           </span>
                         </button>
+
+                        {isAnswered && !isCorrect && onAutoFixConcept && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onAutoFixConcept({
+                                simId: pyq.simId,
+                                questionSnippet: getBilingualPrimary(pyq.question, language),
+                                explanationEn: `${pyq.shortcut20s.en} ${pyq.solution.en}`,
+                                explanationHi: `${pyq.shortcut20s.hi} ${pyq.solution.hi}`,
+                              })
+                            }
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-extrabold rounded-lg border-2 border-black bg-black text-white dark:border-white dark:bg-white dark:text-black hover:opacity-85 transition-opacity whitespace-nowrap cursor-pointer"
+                          >
+                            <Box className="w-3.5 h-3.5" />
+                            <span>{getBilingualPrimary(UI_TEXT.fixConceptLive, language)}</span>
+                          </button>
+                        )}
                       </div>
 
                       {isSolutionShown && (
@@ -791,6 +812,27 @@ export function PracticeBankView({
                           : getBilingualPrimary(UI_TEXT.showSolution, language)}
                       </span>
                     </button>
+
+                    {isAnswered && !isCorrect && onAutoFixConcept && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const simId =
+                            BUILTIN_SIMULATIONS.find((s) => s.chapterId === q.chapterId)?.id ??
+                            'gravitation';
+                          onAutoFixConcept({
+                            simId,
+                            questionSnippet: getBilingualPrimary(q.question, language),
+                            explanationEn: q.solution.en,
+                            explanationHi: q.solution.hi,
+                          });
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-extrabold rounded-lg border-2 border-black bg-black text-white dark:border-white dark:bg-white dark:text-black hover:opacity-85 transition-opacity whitespace-nowrap cursor-pointer"
+                      >
+                        <Box className="w-3.5 h-3.5" />
+                        <span>{getBilingualPrimary(UI_TEXT.fixConceptLive, language)}</span>
+                      </button>
+                    )}
                   </div>
 
                   {isHintShown && (

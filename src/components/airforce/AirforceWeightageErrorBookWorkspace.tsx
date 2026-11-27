@@ -1,19 +1,20 @@
 import React, { useMemo, useState } from 'react';
 import {
   ArrowRight,
+  Box,
   CheckCircle2,
   Sparkles,
   Trash2,
   XCircle,
 } from 'lucide-react';
-import { AirforceMockRecord, LanguageMode } from '../../types/physics';
+import { AirforceMockRecord, AutoFixBannerData, LanguageMode } from '../../types/physics';
 import {
   AIRFORCE_X_WEIGHTAGE,
   getAirforcePyqById,
   getAirforcePyqsByChapter,
 } from '../../data/airforceXBoosters';
 import { BUILTIN_SIMULATIONS, CHAPTERS } from '../../data/simulations';
-import { formatBilingual } from '../../utils/bilingual';
+import { formatBilingual, getBilingualPrimary, UI_TEXT } from '../../utils/bilingual';
 
 interface AirforceWeightageErrorBookWorkspaceProps {
   language: LanguageMode;
@@ -24,6 +25,7 @@ interface AirforceWeightageErrorBookWorkspaceProps {
   onClearMockHistory: () => void;
   onOpenChapterPyqs: (chapterId: string) => void;
   onLaunchSimulation: (simId: string) => void;
+  onAutoFixConcept?: (data: AutoFixBannerData) => void;
 }
 
 const OPTION_LETTERS = ['A', 'B', 'C', 'D'];
@@ -40,6 +42,7 @@ export const AirforceWeightageErrorBookWorkspace: React.FC<
   onClearMockHistory,
   onOpenChapterPyqs,
   onLaunchSimulation,
+  onAutoFixConcept,
 }) => {
   const [priorityFilter, setPriorityFilter] = useState<'All' | 'High' | 'Medium' | 'Low'>('All');
   const [retryPicked, setRetryPicked] = useState<Record<string, number>>({});
@@ -216,7 +219,24 @@ export const AirforceWeightageErrorBookWorkspace: React.FC<
                     </div>
                   )}
 
-                  <div className="flex justify-end">
+                  <div className="flex flex-wrap items-center justify-end gap-3">
+                    {onAutoFixConcept && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onAutoFixConcept({
+                            simId: pyq.simId,
+                            questionSnippet: getBilingualPrimary(pyq.question, language),
+                            explanationEn: `${pyq.shortcut20s.en} ${pyq.solution.en}`,
+                            explanationHi: `${pyq.shortcut20s.hi} ${pyq.solution.hi}`,
+                          })
+                        }
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-extrabold border-2 border-black bg-black text-white dark:border-white dark:bg-white dark:text-black hover:opacity-85 transition-opacity whitespace-nowrap cursor-pointer"
+                      >
+                        <Box className="w-3.5 h-3.5" />
+                        <span>{getBilingualPrimary(UI_TEXT.fixConceptLive, language)}</span>
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => onLaunchSimulation(pyq.simId)}

@@ -5,6 +5,25 @@ export interface BilingualText {
 
 export type LanguageMode = 'en' | 'hi' | 'dual';
 export type ThemeMode = 'dark' | 'light';
+export type SceneMode = 'lab' | 'reallife';
+export type SimplicityLevel = 1 | 2 | 3;
+export type NarratorStyle = 'live-slider' | 'walkthrough' | 'reallife';
+export type NarratorLang = 'auto' | 'en' | 'hi';
+export type CameraPreset = 'iso' | 'front' | 'top' | 'side';
+
+export interface SimCallout3D {
+  label: string;
+  pos: [number, number, number];
+}
+
+export interface AutoFixBannerData {
+  simId: string;
+  questionSnippet: string;
+  explanationEn: string;
+  explanationHi: string;
+  appliedParams?: Record<string, number>;
+}
+
 export type AppView =
   | 'simulation'
   | 'solver'

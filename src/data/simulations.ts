@@ -1615,9 +1615,9 @@ const ALL_RAW_SIMS: PhysicsSimulation[] = [
   ...AIRFORCE_X_SIMULATIONS,
 ];
 const chapterOrderMap = new Map(CHAPTERS.map((c, idx) => [c.id, idx]));
-export const BUILTIN_SIMULATIONS: PhysicsSimulation[] = [...ALL_RAW_SIMS].sort(
-  (a, b) => (chapterOrderMap.get(a.chapterId) ?? 999) - (chapterOrderMap.get(b.chapterId) ?? 999)
-);
+export const BUILTIN_SIMULATIONS: PhysicsSimulation[] = [...ALL_RAW_SIMS]
+  .sort((a, b) => (chapterOrderMap.get(a.chapterId) ?? 999) - (chapterOrderMap.get(b.chapterId) ?? 999))
+  .map((s) => ({ ...s, supports3D: true }));
 
 export function getDefaultParams(sim: PhysicsSimulation): Record<string, number> {
   const result: Record<string, number> = {};

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertTriangle,
   ArrowRight,
+  Box,
   CheckCircle2,
   Clock,
   Flag,
@@ -11,10 +12,15 @@ import {
   Sparkles,
   XCircle,
 } from 'lucide-react';
-import { AirforceMockRecord, AirforcePYQ, LanguageMode } from '../../types/physics';
+import {
+  AirforceMockRecord,
+  AirforcePYQ,
+  AutoFixBannerData,
+  LanguageMode,
+} from '../../types/physics';
 import { CHAPTERS } from '../../data/simulations';
 import { AIRFORCE_MOCK_SETS, generateBalancedAirforceMock } from '../../data/airforceXBoosters';
-import { formatBilingual } from '../../utils/bilingual';
+import { formatBilingual, getBilingualPrimary, UI_TEXT } from '../../utils/bilingual';
 import { playExamCue } from '../../utils/physicsAudio';
 
 interface AirforceCbtMockWorkspaceProps {
@@ -22,6 +28,7 @@ interface AirforceCbtMockWorkspaceProps {
   onAddErrors: (pyqIds: string[]) => void;
   onSaveMockRecord: (record: AirforceMockRecord) => void;
   onLaunchSimulation: (simId: string) => void;
+  onAutoFixConcept?: (data: AutoFixBannerData) => void;
 }
 
 const EXAM_DURATION_SEC = 20 * 60; // 20 minutes
@@ -42,6 +49,7 @@ export const AirforceCbtMockWorkspace: React.FC<AirforceCbtMockWorkspaceProps> =
   onAddErrors,
   onSaveMockRecord,
   onLaunchSimulation,
+  onAutoFixConcept,
 }) => {
   const [phase, setPhase] = useState<'setup' | 'active' | 'submitted'>('setup');
   const [selectedSetId, setSelectedSetId] = useState<string>(AIRFORCE_MOCK_SETS[0].id);
@@ -828,7 +836,24 @@ export const AirforceCbtMockWorkspace: React.FC<AirforceCbtMockWorkspaceProps> =
                 </div>
               </div>
 
-              <div className="flex justify-end">
+              <div className="flex flex-wrap justify-end gap-2">
+                {!isCorrect && onAutoFixConcept && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onAutoFixConcept({
+                        simId: q.simId,
+                        questionSnippet: getBilingualPrimary(q.question, language),
+                        explanationEn: `${q.shortcut20s.en} ${q.solution.en}`,
+                        explanationHi: `${q.shortcut20s.hi} ${q.solution.hi}`,
+                      })
+                    }
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-extrabold border-2 border-black bg-black text-white dark:border-white dark:bg-white dark:text-black hover:opacity-85 transition-opacity whitespace-nowrap cursor-pointer"
+                  >
+                    <Box className="w-3.5 h-3.5" />
+                    <span>{getBilingualPrimary(UI_TEXT.fixConceptLive, language)}</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => onLaunchSimulation(q.simId)}

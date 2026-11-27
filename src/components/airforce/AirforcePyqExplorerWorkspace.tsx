@@ -3,6 +3,7 @@ import {
   ArrowRight,
   Bookmark,
   BookmarkCheck,
+  Box,
   CheckCircle2,
   Eye,
   EyeOff,
@@ -10,10 +11,10 @@ import {
   Sparkles,
   XCircle,
 } from 'lucide-react';
-import { AirforcePYQType, LanguageMode } from '../../types/physics';
+import { AirforcePYQType, AutoFixBannerData, LanguageMode } from '../../types/physics';
 import { CHAPTERS } from '../../data/simulations';
 import { AIRFORCE_X_PYQS } from '../../data/airforceXBoosters';
-import { formatBilingual } from '../../utils/bilingual';
+import { formatBilingual, getBilingualPrimary, UI_TEXT } from '../../utils/bilingual';
 import { playExamCue } from '../../utils/physicsAudio';
 
 interface AirforcePyqExplorerWorkspaceProps {
@@ -23,6 +24,7 @@ interface AirforcePyqExplorerWorkspaceProps {
   onToggleErrorBook: (pyqId: string) => void;
   onAddErrors: (pyqIds: string[]) => void;
   onLaunchSimulation: (simId: string) => void;
+  onAutoFixConcept?: (data: AutoFixBannerData) => void;
 }
 
 const OPTION_LETTERS = ['A', 'B', 'C', 'D'];
@@ -35,6 +37,7 @@ export const AirforcePyqExplorerWorkspace: React.FC<AirforcePyqExplorerWorkspace
   onToggleErrorBook,
   onAddErrors,
   onLaunchSimulation,
+  onAutoFixConcept,
 }) => {
   const [selectedChapter, setSelectedChapter] = useState<string>(initialChapterId);
   const [selectedYear, setSelectedYear] = useState<string>('all');
@@ -280,14 +283,34 @@ export const AirforcePyqExplorerWorkspace: React.FC<AirforcePyqExplorerWorkspace
                     )}
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => onLaunchSimulation(pyq.simId)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border-2 border-black dark:border-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors whitespace-nowrap"
-                  >
-                    {language === 'hi' ? 'लाइव सिमुलेशन खोलें' : 'Launch Live Lab'}
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {picked !== undefined && !isCorrect && onAutoFixConcept && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onAutoFixConcept({
+                            simId: pyq.simId,
+                            questionSnippet: getBilingualPrimary(pyq.question, language),
+                            explanationEn: `${pyq.shortcut20s.en} ${pyq.solution.en}`,
+                            explanationHi: `${pyq.shortcut20s.hi} ${pyq.solution.hi}`,
+                          })
+                        }
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-extrabold border-2 border-black bg-black text-white dark:border-white dark:bg-white dark:text-black hover:opacity-85 transition-opacity whitespace-nowrap cursor-pointer"
+                      >
+                        <Box className="w-3.5 h-3.5" />
+                        <span>{getBilingualPrimary(UI_TEXT.fixConceptLive, language)}</span>
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => onLaunchSimulation(pyq.simId)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border-2 border-black dark:border-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors whitespace-nowrap"
+                    >
+                      {language === 'hi' ? 'लाइव सिमुलेशन खोलें' : 'Launch Live Lab'}
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Expanded 20-Second Shortcut & Full Solution */}

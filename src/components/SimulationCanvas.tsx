@@ -3,12 +3,15 @@ import {
   ChalkStroke,
   ChalkTone,
   DrawingTool,
+  LanguageMode,
   LiveSimTelemetry,
   PhysicsSimulation,
+  SceneMode,
   ThemeMode,
 } from '../types/physics';
 import { resetBuiltinState, stepAndRenderBuiltinSim } from '../engines/builtinEngines';
 import { stepAndRenderCustomSim } from '../engines/customParametricEngine';
+import { drawRealLife2DOverlay } from '../engines/realLife2dOverlay';
 import { ChalkboardOverlay } from './ChalkboardOverlay';
 import { stopPhysicsAudio, syncPhysicsAudioFrame } from '../utils/physicsAudio';
 
@@ -20,6 +23,8 @@ interface SimulationCanvasProps {
   showVectors: boolean;
   showGrid: boolean;
   theme: ThemeMode;
+  language?: LanguageMode;
+  sceneMode?: SceneMode;
   resetToken: number;
   stepToken: number;
   isDrawing: boolean;
@@ -29,6 +34,7 @@ interface SimulationCanvasProps {
   onAddStroke: (stroke: ChalkStroke) => void;
   onTelemetry: (t: LiveSimTelemetry) => void;
   tall?: boolean;
+  fillHeight?: boolean;
 }
 
 export function SimulationCanvas({
@@ -39,6 +45,8 @@ export function SimulationCanvas({
   showVectors,
   showGrid,
   theme,
+  language = 'en',
+  sceneMode = 'lab',
   resetToken,
   stepToken,
   isDrawing,
@@ -48,6 +56,7 @@ export function SimulationCanvas({
   onAddStroke,
   onTelemetry,
   tall = false,
+  fillHeight = false,
 }: SimulationCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -63,6 +72,8 @@ export function SimulationCanvas({
     showVectors,
     showGrid,
     theme,
+    language,
+    sceneMode,
     onTelemetry,
   });
   propsRef.current = {
@@ -73,6 +84,8 @@ export function SimulationCanvas({
     showVectors,
     showGrid,
     theme,
+    language,
+    sceneMode,
     onTelemetry,
   };
 
@@ -193,6 +206,19 @@ export function SimulationCanvas({
                 theme: p.theme,
                 state: stateRef.current,
               });
+          if (p.sceneMode === 'reallife') {
+            drawRealLife2DOverlay(
+              ctx,
+              width,
+              height,
+              p.simulation,
+              p.params,
+              telemetry,
+              simTimeRef.current,
+              p.theme,
+              p.language
+            );
+          }
           ctx.restore();
 
           if (!p.simulation.isCustom) {
@@ -227,8 +253,12 @@ export function SimulationCanvas({
   return (
     <div
       ref={containerRef}
-      className={`relative w-full overflow-hidden rounded-xl border-2 border-black dark:border-white bg-white dark:bg-black ${
-        tall ? 'h-[54vh] min-h-[400px] max-h-[660px]' : 'h-[390px] lg:h-[440px]'
+      className={`relative w-full overflow-hidden border-2 border-black dark:border-white bg-white dark:bg-black ${
+        fillHeight
+          ? 'h-full rounded-none border-0'
+          : tall
+            ? 'rounded-xl h-[54vh] min-h-[400px] max-h-[660px]'
+            : 'rounded-xl h-[390px] lg:h-[440px]'
       }`}
     >
       <canvas ref={canvasRef} className="w-full h-full block" />

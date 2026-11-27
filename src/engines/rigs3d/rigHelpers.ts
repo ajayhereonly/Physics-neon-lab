@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { LiveSimTelemetry, ThemeMode } from '../../types/physics';
+import { LiveSimTelemetry, SimCallout3D, ThemeMode } from '../../types/physics';
 
 export interface SceneRig {
   group: THREE.Group;
@@ -11,6 +11,8 @@ export interface SceneRig {
     params: Record<string, number>,
     showVectors: boolean
   ) => LiveSimTelemetry;
+  getCallouts?: (params: Record<string, number>, telemetry: LiveSimTelemetry) => SimCallout3D[];
+  getStrobePos?: () => THREE.Vector3 | null;
 }
 
 export interface Palette3D {

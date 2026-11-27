@@ -2,19 +2,23 @@ import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { RotateCcw } from 'lucide-react';
+import { Eye, Layers, RotateCcw, Sparkles, Tag } from 'lucide-react';
 import {
+  CameraPreset,
   ChalkStroke,
   ChalkTone,
   DrawingTool,
   LanguageMode,
   LiveSimTelemetry,
   PhysicsSimulation,
+  SceneMode,
+  SimCallout3D,
   ThemeMode,
 } from '../types/physics';
 import { getBilingualPrimary, UI_TEXT } from '../utils/bilingual';
 import { ChalkboardOverlay } from './ChalkboardOverlay';
 import { stopPhysicsAudio, syncPhysicsAudioFrame } from '../utils/physicsAudio';
+import { SceneRig } from '../engines/rigs3d/rigHelpers';
 import {
   buildEyeDefectsRig,
   buildMicroscopeTelescopeRig,
@@ -32,6 +36,12 @@ import {
   buildSimplePendulumRig,
   buildTransformerRig,
 } from '../engines/rigs3d/mechEmNuclear3dRigs';
+import { buildMechanics3DRig } from '../engines/rigs3d/mechanics3dRigs';
+import { buildFluidsThermal3DRig } from '../engines/rigs3d/fluidsThermal3dRigs';
+import { buildWavesElectricity3DRig } from '../engines/rigs3d/wavesElectricity3dRigs';
+import { buildOpticsModernElec3DRig } from '../engines/rigs3d/opticsModernElec3dRigs';
+import { buildRealLife3DRig } from '../engines/rigs3d/realLife3dRigs';
+import { getRealLifeScenario } from '../data/realLifeScenarios';
 
 interface Simulation3DCanvasProps {
   simulation: PhysicsSimulation;
@@ -42,6 +52,7 @@ interface Simulation3DCanvasProps {
   showGrid: boolean;
   theme: ThemeMode;
   language: LanguageMode;
+  sceneMode?: SceneMode;
   resetToken: number;
   stepToken: number;
   isDrawing: boolean;
@@ -51,22 +62,11 @@ interface Simulation3DCanvasProps {
   onAddStroke: (stroke: ChalkStroke) => void;
   onTelemetry: (t: LiveSimTelemetry) => void;
   tall?: boolean;
+  fillHeight?: boolean;
 }
 
 const G_CONST = 6.674e-11;
 const K_COULOMB = 8.988e9;
-
-interface SceneRig {
-  group: THREE.Group;
-  defaultCamPos: [number, number, number];
-  defaultTarget: [number, number, number];
-  update: (
-    dt: number,
-    t: number,
-    params: Record<string, number>,
-    showVectors: boolean
-  ) => LiveSimTelemetry;
-}
 
 function disposeObject3D(root: THREE.Object3D) {
   root.traverse((obj) => {
@@ -1331,7 +1331,7 @@ function buildSolenoidWiresRig(theme: ThemeMode): SceneRig {
   };
 }
 
-function buildRigForSim(simId: string, theme: ThemeMode): SceneRig {
+export function buildLab3DRigForSim(simId: string, theme: ThemeMode): SceneRig {
   switch (simId) {
     case 'em-waves':
       return buildEMWavesRig(theme);
@@ -1350,6 +1350,7 @@ function buildRigForSim(simId: string, theme: ThemeMode): SceneRig {
     case 'escape-velocity':
       return buildEscapeVelocityRig(theme);
     case 'gauss-dipole':
+    case 'electric-dipole':
       return buildGaussDipoleRig(theme);
     case 'solenoid-wires':
       return buildSolenoidWiresRig(theme);
@@ -1374,10 +1375,26 @@ function buildRigForSim(simId: string, theme: ThemeMode): SceneRig {
     case 'transformer':
       return buildTransformerRig(theme);
     case 'nuclei':
+    case 'rutherford-scattering':
       return buildNucleiRig(theme);
-    default:
+    default: {
+      const mech = buildMechanics3DRig(simId, theme);
+      if (mech) return mech;
+      const fluid = buildFluidsThermal3DRig(simId, theme);
+      if (fluid) return fluid;
+      const waveEm = buildWavesElectricity3DRig(simId, theme);
+      if (waveEm) return waveEm;
+      const optMod = buildOpticsModernElec3DRig(simId, theme);
+      if (optMod) return optMod;
       return buildEMWavesRig(theme);
+    }
   }
+}
+
+interface ProjectedCallout {
+  label: string;
+  x: number;
+  y: number;
 }
 
 export function Simulation3DCanvas({
@@ -1389,6 +1406,7 @@ export function Simulation3DCanvas({
   showGrid,
   theme,
   language,
+  sceneMode = 'lab',
   resetToken,
   stepToken,
   isDrawing,
@@ -1398,6 +1416,7 @@ export function Simulation3DCanvas({
   onAddStroke,
   onTelemetry,
   tall = false,
+  fillHeight = false,
 }: Simulation3DCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -1407,8 +1426,17 @@ export function Simulation3DCanvas({
     pos: [6, 4, 7],
     target: [0, 0, 0],
   });
+  const camLerpGoalRef = useRef<{ pos: THREE.Vector3; target: THREE.Vector3 } | null>(null);
   const simTimeRef = useRef(0);
   const [contextLost, setContextLost] = useState(false);
+
+  // Pro 3D Classroom Inspection Suite toggles
+  const [activePreset, setActivePreset] = useState<CameraPreset>('iso');
+  const [cutawayXray, setCutawayXray] = useState(false);
+  const [explodedView, setExplodedView] = useState(false);
+  const [strobeEnabled, setStrobeEnabled] = useState(false);
+  const [calloutsEnabled, setCalloutsEnabled] = useState(true);
+  const [screenCallouts, setScreenCallouts] = useState<ProjectedCallout[]>([]);
 
   const propsRef = useRef({
     params,
@@ -1417,12 +1445,27 @@ export function Simulation3DCanvas({
     showVectors,
     showGrid,
     onTelemetry,
+    cutawayXray,
+    explodedView,
+    strobeEnabled,
+    calloutsEnabled,
   });
-  propsRef.current = { params, isPlaying, simSpeed, showVectors, showGrid, onTelemetry };
+  propsRef.current = {
+    params,
+    isPlaying,
+    simSpeed,
+    showVectors,
+    showGrid,
+    onTelemetry,
+    cutawayXray,
+    explodedView,
+    strobeEnabled,
+    calloutsEnabled,
+  };
 
   useEffect(() => {
     simTimeRef.current = 0;
-  }, [simulation.id, resetToken]);
+  }, [simulation.id, sceneMode, resetToken]);
 
   useEffect(() => {
     if (stepToken > 0) {
@@ -1448,7 +1491,6 @@ export function Simulation3DCanvas({
     renderer.domElement.style.display = 'block';
     host.appendChild(renderer.domElement);
 
-    // Software WebGL detection (avoids saturating SwiftShader/llvmpipe)
     const gl = renderer.getContext();
     const dbg = gl.getExtension('WEBGL_debug_renderer_info');
     const rendererStr = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : '';
@@ -1466,7 +1508,6 @@ export function Simulation3DCanvas({
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(pal.bg);
 
-    // Studio IBL lighting via RoomEnvironment + directional key/rim for crisp B&W depth
     const pmrem = new THREE.PMREMGenerator(renderer);
     const envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
     scene.environment = envTex;
@@ -1482,9 +1523,70 @@ export function Simulation3DCanvas({
     gridHelper.position.y = -2.4;
     scene.add(gridHelper);
 
-    const rig = buildRigForSim(simulation.id, theme);
+    const rig =
+      sceneMode === 'reallife'
+        ? buildRealLife3DRig(simulation, theme, () => buildLab3DRigForSim(simulation.id, theme))
+        : buildLab3DRigForSim(simulation.id, theme);
     scene.add(rig.group);
     defaultPoseRef.current = { pos: rig.defaultCamPos, target: rig.defaultTarget };
+
+    // Cache original material properties for Cutaway X-Ray toggle
+    const savedMaterials = new Map<
+      THREE.Material,
+      { wireframe: boolean; transparent: boolean; opacity: number }
+    >();
+    rig.group.traverse((obj) => {
+      const m = obj as THREE.Mesh;
+      if (!m.isMesh || !m.material) return;
+      const mats = Array.isArray(m.material) ? m.material : [m.material];
+      mats.forEach((mat) => {
+        const std = mat as THREE.MeshStandardMaterial;
+        if ('wireframe' in std && !savedMaterials.has(mat)) {
+          savedMaterials.set(mat, {
+            wireframe: Boolean(std.wireframe),
+            transparent: Boolean(std.transparent),
+            opacity: typeof std.opacity === 'number' ? std.opacity : 1,
+          });
+        }
+      });
+    });
+
+    // Exploded view radial displacement vectors for top-level rig components
+    const explodeOffsets = new Map<THREE.Object3D, THREE.Vector3>();
+    const explodeChildren = rig.group.children.filter((c) => !(c instanceof THREE.ArrowHelper));
+    explodeChildren.forEach((child, idx) => {
+      const dir = child.position.clone();
+      if (dir.lengthSq() < 0.05) {
+        const ang = (idx / Math.max(1, explodeChildren.length)) * Math.PI * 2;
+        dir.set(Math.cos(ang), (idx % 3 - 1) * 0.65, Math.sin(ang));
+      } else {
+        dir.normalize();
+      }
+      explodeOffsets.set(child, dir.multiplyScalar(1.35));
+    });
+    let currentExplodeFactor = 0;
+    let lastExplodeApplied = 0;
+
+    // 3D Strobe Motion Ghost Trail Pool (14 translucent ghost spheres)
+    const STROBE_COUNT = 14;
+    const strobeGroup = new THREE.Group();
+    const strobeGeo = new THREE.SphereGeometry(0.18, 12, 12);
+    const strobeMeshes: THREE.Mesh[] = [];
+    for (let i = 0; i < STROBE_COUNT; i++) {
+      const mat = new THREE.MeshStandardMaterial({
+        color: pal.primaryHex,
+        transparent: true,
+        opacity: 0.14 + (i / STROBE_COUNT) * 0.42,
+        roughness: 0.4,
+      });
+      const sm = new THREE.Mesh(strobeGeo, mat);
+      sm.visible = false;
+      strobeGroup.add(sm);
+      strobeMeshes.push(sm);
+    }
+    scene.add(strobeGroup);
+    let strobeCursor = 0;
+    let strobeAccum = 0;
 
     const camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 100);
     camera.position.set(...rig.defaultCamPos);
@@ -1494,10 +1596,16 @@ export function Simulation3DCanvas({
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
     controls.minDistance = 4;
-    controls.maxDistance = 22;
+    controls.maxDistance = 24;
     controls.target.set(...rig.defaultTarget);
     controls.update();
     controlsRef.current = controls;
+
+    // Cancel camera preset lerp if teacher manually drags OrbitControls
+    const onControlStart = () => {
+      camLerpGoalRef.current = null;
+    };
+    controls.addEventListener('start', onControlStart);
 
     const resizeObserver = new ResizeObserver(() => {
       const w = host.clientWidth;
@@ -1514,6 +1622,9 @@ export function Simulation3DCanvas({
     let timerId = 0;
     let lastTime = performance.now();
     let lastTelemetryEmit = 0;
+    let lastCalloutEmit = 0;
+    let prevXrayState = false;
+    const projVec = new THREE.Vector3();
 
     const tick = () => {
       if (disposed) return;
@@ -1526,7 +1637,85 @@ export function Simulation3DCanvas({
       simTimeRef.current += dt;
 
       gridHelper.visible = p.showGrid;
+
+      // Undo previous frame's explode offset before rig.update writes positions
+      if (lastExplodeApplied > 0.0001) {
+        explodeOffsets.forEach((vec, child) => {
+          child.position.addScaledVector(vec, -lastExplodeApplied);
+        });
+      }
+
       const telemetry = rig.update(dt, simTimeRef.current, p.params, p.showVectors);
+
+      // Apply smooth Exploded 3D Component View offset
+      const targetExplode = p.explodedView ? 1 : 0;
+      currentExplodeFactor += (targetExplode - currentExplodeFactor) * Math.min(1, rawDt * 8);
+      if (currentExplodeFactor > 0.0001) {
+        explodeOffsets.forEach((vec, child) => {
+          child.position.addScaledVector(vec, currentExplodeFactor);
+        });
+      }
+      lastExplodeApplied = currentExplodeFactor;
+
+      // Apply Cutaway X-Ray wireframe toggle only when state changes
+      if (p.cutawayXray !== prevXrayState) {
+        prevXrayState = p.cutawayXray;
+        savedMaterials.forEach((orig, mat) => {
+          const std = mat as THREE.MeshStandardMaterial;
+          if (p.cutawayXray) {
+            std.wireframe = true;
+            std.transparent = true;
+            std.opacity = 0.34;
+          } else {
+            std.wireframe = orig.wireframe;
+            std.transparent = orig.transparent;
+            std.opacity = orig.opacity;
+          }
+          std.needsUpdate = true;
+        });
+      }
+
+      // 3D Strobe Motion Ghost Trails
+      strobeGroup.visible = p.strobeEnabled;
+      if (p.strobeEnabled && dt > 0) {
+        strobeAccum += dt;
+        if (strobeAccum >= 0.16) {
+          strobeAccum = 0;
+          let samplePos = rig.getStrobePos ? rig.getStrobePos() : null;
+          if (!samplePos) {
+            // Fallback: track first mesh/group with non-zero position
+            for (const c of rig.group.children) {
+              if (c.position.lengthSq() > 0.15 && !(c instanceof THREE.ArrowHelper)) {
+                samplePos = c.getWorldPosition(new THREE.Vector3());
+                break;
+              }
+            }
+          }
+          if (samplePos) {
+            const ghost = strobeMeshes[strobeCursor];
+            ghost.position.copy(samplePos);
+            ghost.visible = true;
+            strobeCursor = (strobeCursor + 1) % STROBE_COUNT;
+          }
+        }
+      } else if (!p.strobeEnabled) {
+        strobeMeshes.forEach((m) => (m.visible = false));
+      }
+
+      // Smooth Camera Preset Lerp
+      if (camLerpGoalRef.current) {
+        camera.position.lerp(camLerpGoalRef.current.pos, Math.min(1, rawDt * 7.5));
+        controls.target.lerp(camLerpGoalRef.current.target, Math.min(1, rawDt * 7.5));
+        if (
+          camera.position.distanceTo(camLerpGoalRef.current.pos) < 0.04 &&
+          controls.target.distanceTo(camLerpGoalRef.current.target) < 0.04
+        ) {
+          camera.position.copy(camLerpGoalRef.current.pos);
+          controls.target.copy(camLerpGoalRef.current.target);
+          camLerpGoalRef.current = null;
+        }
+      }
+
       syncPhysicsAudioFrame(
         simulation.id,
         simTimeRef.current,
@@ -1542,6 +1731,35 @@ export function Simulation3DCanvas({
       if (now - lastTelemetryEmit >= 70) {
         lastTelemetryEmit = now;
         p.onTelemetry(telemetry);
+      }
+
+      // Project Live 3D Dimension Callouts into DOM screen coordinates (~12fps)
+      if (now - lastCalloutEmit >= 85) {
+        lastCalloutEmit = now;
+        if (!p.calloutsEnabled) {
+          setScreenCallouts((prev) => (prev.length ? [] : prev));
+        } else {
+          const rawCallouts: SimCallout3D[] = rig.getCallouts
+            ? rig.getCallouts(p.params, telemetry)
+            : telemetry.readouts.slice(0, 2).map((r, idx) => ({
+                label: `${r.symbol} = ${r.value} ${r.unit}`.trim(),
+                pos: idx === 0 ? [0, 2.2, 0] : [2.4, -1.2, 0],
+              }));
+          const cw = host.clientWidth;
+          const ch = host.clientHeight;
+          const projected: ProjectedCallout[] = [];
+          for (const c of rawCallouts) {
+            projVec.set(c.pos[0], c.pos[1], c.pos[2]).project(camera);
+            if (projVec.z <= 1) {
+              const sx = (projVec.x * 0.5 + 0.5) * cw;
+              const sy = (-projVec.y * 0.5 + 0.5) * ch;
+              if (sx > 24 && sx < cw - 24 && sy > 48 && sy < ch - 44) {
+                projected.push({ label: c.label, x: sx, y: sy });
+              }
+            }
+          }
+          setScreenCallouts(projected);
+        }
       }
 
       if (isSoftwareGl) {
@@ -1561,6 +1779,7 @@ export function Simulation3DCanvas({
       cancelAnimationFrame(rafId);
       window.clearTimeout(timerId);
       resizeObserver.disconnect();
+      controls.removeEventListener('start', onControlStart);
       controls.dispose();
       renderer.domElement.removeEventListener('webglcontextlost', onContextLost);
       renderer.domElement.removeEventListener('webglcontextrestored', onContextRestored);
@@ -1572,37 +1791,152 @@ export function Simulation3DCanvas({
         host.removeChild(renderer.domElement);
       }
     };
-  }, [simulation.id, theme]);
+  }, [simulation.id, theme, sceneMode]);
+
+  const applyCameraPreset = (preset: CameraPreset) => {
+    setActivePreset(preset);
+    const def = defaultPoseRef.current;
+    const target = new THREE.Vector3(...def.target);
+    const baseDist = Math.max(7.5, new THREE.Vector3(...def.pos).distanceTo(target));
+
+    let nextPos: THREE.Vector3;
+    if (preset === 'front') {
+      nextPos = new THREE.Vector3(target.x, target.y + 0.6, target.z + baseDist);
+    } else if (preset === 'top') {
+      nextPos = new THREE.Vector3(target.x, target.y + baseDist * 1.05, target.z + 0.15);
+    } else if (preset === 'side') {
+      nextPos = new THREE.Vector3(target.x + baseDist, target.y + 0.8, target.z);
+    } else {
+      nextPos = new THREE.Vector3(...def.pos);
+    }
+    camLerpGoalRef.current = { pos: nextPos, target };
+  };
 
   const handleResetCamera = () => {
-    if (!cameraRef.current || !controlsRef.current) return;
-    cameraRef.current.position.set(...defaultPoseRef.current.pos);
-    controlsRef.current.target.set(...defaultPoseRef.current.target);
-    controlsRef.current.update();
+    applyCameraPreset('iso');
   };
+
+  const scenario = getRealLifeScenario(simulation);
 
   return (
     <div
       ref={containerRef}
-      className={`relative w-full overflow-hidden rounded-xl border-2 border-black dark:border-white bg-white dark:bg-black ${
-        tall ? 'h-[54vh] min-h-[400px] max-h-[660px]' : 'h-[390px] lg:h-[440px]'
+      className={`relative w-full overflow-hidden border-2 border-black dark:border-white bg-white dark:bg-black ${
+        fillHeight
+          ? 'h-full rounded-none border-0'
+          : tall
+            ? 'rounded-xl h-[54vh] min-h-[400px] max-h-[660px]'
+            : 'rounded-xl h-[390px] lg:h-[440px]'
       }`}
     >
       <div ref={hostRef} className="w-full h-full" />
 
-      {/* Minimal Pure B&W 3D Orbit Hint + Reset Camera (Solid background, zero backdrop-filter over WebGL) */}
-      <div className="absolute top-3 left-3 z-10 pointer-events-none px-2.5 py-1 rounded border-2 border-black dark:border-white bg-white dark:bg-black text-black dark:text-white font-mono text-xs font-bold">
-        3D · {language === 'hi' ? 'घुमाने के लिए खींचें · ज़ूम करें' : 'Drag to Rotate · Scroll to Zoom'}
+      {/* Top-Left 3D Stage Mode Indicator (Solid Pure B&W, zero backdrop-filter) */}
+      <div className="absolute top-2.5 left-2.5 z-10 pointer-events-none px-2.5 py-1 rounded border-2 border-black dark:border-white bg-white dark:bg-black text-black dark:text-white font-mono text-[11px] font-bold max-w-[55%] truncate">
+        {sceneMode === 'reallife'
+          ? `3D REAL-LIFE · ${getBilingualPrimary(scenario.title, language)}`
+          : `3D LAB · ${language === 'hi' ? 'घुमाने के लिए खींचें' : 'Drag to Orbit · Scroll Zoom'}`}
       </div>
 
-      <button
-        type="button"
-        onClick={handleResetCamera}
-        className="absolute top-3 right-3 z-10 inline-flex items-center gap-1.5 px-2.5 py-1 rounded border-2 border-black dark:border-white bg-white dark:bg-black text-black dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black font-mono text-xs font-bold transition-colors cursor-pointer"
-      >
-        <RotateCcw className="w-3.5 h-3.5" />
-        <span>{getBilingualPrimary(UI_TEXT.resetCamera, language)}</span>
-      </button>
+      {/* Top-Right Camera Presets + Reset (Solid Pure B&W) */}
+      <div className="absolute top-2.5 right-2.5 z-10 flex items-center gap-1 flex-wrap justify-end">
+        <div className="inline-flex rounded border-2 border-black dark:border-white bg-white dark:bg-black overflow-hidden">
+          {(['iso', 'front', 'top', 'side'] as CameraPreset[]).map((preset) => (
+            <button
+              key={preset}
+              type="button"
+              onClick={() => applyCameraPreset(preset)}
+              className={`px-2 py-1 font-mono text-[10px] font-bold uppercase transition-colors cursor-pointer ${
+                activePreset === preset
+                  ? 'bg-black text-white dark:bg-white dark:text-black'
+                  : 'text-black dark:text-white hover:bg-neutral-200 dark:hover:bg-neutral-800'
+              }`}
+            >
+              {preset}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={handleResetCamera}
+          title={getBilingualPrimary(UI_TEXT.resetCamera, language)}
+          className="inline-flex items-center gap-1 px-2 py-1 rounded border-2 border-black dark:border-white bg-white dark:bg-black text-black dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black font-mono text-[10px] font-bold transition-colors cursor-pointer"
+        >
+          <RotateCcw className="w-3 h-3" />
+          <span className="hidden sm:inline">{getBilingualPrimary(UI_TEXT.resetCamera, language)}</span>
+        </button>
+      </div>
+
+      {/* Bottom-Left Pro 3D Inspection Suite (Cutaway X-Ray, Explode, Strobe, Callouts) */}
+      <div className="absolute bottom-2.5 left-2.5 z-10 flex items-center gap-1.5 flex-wrap">
+        <button
+          type="button"
+          onClick={() => setCutawayXray((v) => !v)}
+          aria-pressed={cutawayXray}
+          className={`inline-flex items-center gap-1 px-2 py-1 rounded border-2 font-mono text-[10px] font-bold transition-colors cursor-pointer whitespace-nowrap ${
+            cutawayXray
+              ? 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-black'
+              : 'border-black dark:border-white bg-white dark:bg-black text-black dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900'
+          }`}
+        >
+          <Eye className="w-3 h-3" />
+          <span>{getBilingualPrimary(UI_TEXT.cutawayXray, language)}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setExplodedView((v) => !v)}
+          aria-pressed={explodedView}
+          className={`inline-flex items-center gap-1 px-2 py-1 rounded border-2 font-mono text-[10px] font-bold transition-colors cursor-pointer whitespace-nowrap ${
+            explodedView
+              ? 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-black'
+              : 'border-black dark:border-white bg-white dark:bg-black text-black dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900'
+          }`}
+        >
+          <Layers className="w-3 h-3" />
+          <span>{getBilingualPrimary(UI_TEXT.explodeView, language)}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setStrobeEnabled((v) => !v)}
+          aria-pressed={strobeEnabled}
+          className={`inline-flex items-center gap-1 px-2 py-1 rounded border-2 font-mono text-[10px] font-bold transition-colors cursor-pointer whitespace-nowrap ${
+            strobeEnabled
+              ? 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-black'
+              : 'border-black dark:border-white bg-white dark:bg-black text-black dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900'
+          }`}
+        >
+          <Sparkles className="w-3 h-3" />
+          <span>{getBilingualPrimary(UI_TEXT.strobeTrails, language)}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setCalloutsEnabled((v) => !v)}
+          aria-pressed={calloutsEnabled}
+          className={`inline-flex items-center gap-1 px-2 py-1 rounded border-2 font-mono text-[10px] font-bold transition-colors cursor-pointer whitespace-nowrap ${
+            calloutsEnabled
+              ? 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-black'
+              : 'border-black dark:border-white bg-white dark:bg-black text-black dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900'
+          }`}
+        >
+          <Tag className="w-3 h-3" />
+          <span>{getBilingualPrimary(UI_TEXT.callouts3D, language)}</span>
+        </button>
+      </div>
+
+      {/* Live Camera-Projected 3D Dimension Callouts */}
+      {calloutsEnabled &&
+        screenCallouts.map((c, idx) => (
+          <div
+            key={`${idx}-${c.label}`}
+            style={{ transform: `translate(${Math.round(c.x)}px, ${Math.round(c.y)}px) translate(-50%, -100%)` }}
+            className="absolute top-0 left-0 z-10 pointer-events-none px-1.5 py-0.5 rounded border border-black dark:border-white bg-white dark:bg-black text-black dark:text-white font-mono text-[10px] font-bold tabular-nums whitespace-nowrap"
+          >
+            {c.label}
+          </div>
+        ))}
 
       {contextLost && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-white dark:bg-black text-black dark:text-white font-mono text-sm font-bold p-4 text-center">

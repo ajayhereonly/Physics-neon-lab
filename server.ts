@@ -376,6 +376,83 @@ app.post('/api/solve-physics', async (req, res) => {
   }
 });
 
+const NARRATION_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    explanationEn: {
+      type: Type.STRING,
+      description:
+        'A warm, crystal-clear 2 to 3 sentence ultra-simple everyday analogy explanation in English for a struggling student. Avoid jargon and refer directly to the live numbers.',
+    },
+    explanationHi: {
+      type: Type.STRING,
+      description:
+        'A warm, natural, ultra-simple 2 to 3 sentence everyday analogy explanation in spoken Hindi (Devanagari) suitable for Text-to-Speech narration.',
+    },
+    analogyTag: {
+      type: Type.STRING,
+      description: 'Short 2-4 word everyday analogy tag, e.g. "Spinning Chair Trick" or "Garden Hose Squeeze".',
+    },
+  },
+  required: ['explanationEn', 'explanationHi', 'analogyTag'],
+};
+
+app.post('/api/narrate-simpler', async (req, res) => {
+  const simTitle = typeof req.body?.simTitle === 'string' ? req.body.simTitle.trim().slice(0, 120) : '';
+  const formula = typeof req.body?.formula === 'string' ? req.body.formula.trim().slice(0, 120) : '';
+  const telemetryFormula =
+    typeof req.body?.telemetryFormula === 'string' ? req.body.telemetryFormula.trim().slice(0, 220) : '';
+  const sceneMode = req.body?.sceneMode === 'reallife' ? 'reallife' : 'lab';
+  const currentLevel = Number(req.body?.currentLevel) || 3;
+  const previousText =
+    typeof req.body?.previousText === 'string' ? req.body.previousText.trim().slice(0, 400) : '';
+  const paramsSummary =
+    typeof req.body?.paramsSummary === 'string' ? req.body.paramsSummary.trim().slice(0, 260) : '';
+
+  if (!simTitle) {
+    res.status(400).json({ error: 'Missing simulation title for narration.' });
+    return;
+  }
+
+  const ai = createGeminiClient();
+  if (!ai) {
+    res.status(503).json({
+      error: 'Gemini API key is not configured on the server.',
+    });
+    return;
+  }
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-4-hydrogen',
+      contents: `A student did NOT understand the Level ${currentLevel} explanation of "${simTitle}" (${formula}).
+Current mode: ${sceneMode === 'reallife' ? 'Real-Life Example' : 'Lab Apparatus'}.
+Live slider values: ${paramsSummary || 'default'}.
+Live formula calculation: ${telemetryFormula || formula}.
+Previous explanation they found confusing: "${previousText || 'standard textbook version'}".
+Explain what is happening right now in an EVEN SIMPLER, vivid everyday analogy (like explaining to a curious 12-year-old using daily Indian life examples like a bicycle, ceiling fan, car turn, cricket ball, or water pipe). Keep it short (2-3 spoken sentences) so it sounds natural when read aloud.`,
+      config: {
+        systemInstruction:
+          'You are a patient, beloved Indian physics teacher who makes difficult Class 11-12 physics effortless using ultra-simple daily-life analogies. Produce BOTH natural spoken English and natural spoken Hindi (Devanagari, conversational classroom Hindi, avoiding overly heavy Sanskritized words) optimized for Text-to-Speech. Never use LaTeX backslashes or markdown formatting.',
+        responseMimeType: 'application/json',
+        responseSchema: NARRATION_SCHEMA,
+      },
+    });
+
+    const rawText = (response.text ?? '').trim();
+    if (!rawText) {
+      res.status(502).json({ error: 'Empty response from Gemini narrator.' });
+      return;
+    }
+
+    const parsed = JSON.parse(rawText);
+    res.json({ narration: parsed });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to simplify narration.';
+    res.status(500).json({ error: message });
+  }
+});
+
 async function startServer() {
   const isProd = process.env.NODE_ENV === 'production';
 

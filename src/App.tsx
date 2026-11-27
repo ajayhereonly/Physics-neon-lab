@@ -7,6 +7,7 @@ import {
   Compass,
   Contrast,
   Grid,
+  HelpCircle,
   Maximize2,
   Minimize2,
   Pause,
@@ -14,6 +15,7 @@ import {
   Play,
   RotateCcw,
   SkipForward,
+  X,
 } from 'lucide-react';
 import {
   BUILTIN_SIMULATIONS,
@@ -26,12 +28,14 @@ import { ALL_PRACTICE_QUESTIONS } from './data/questionBank';
 import { AIRFORCE_X_PYQS } from './data/airforceXBoosters';
 import {
   AppView,
+  AutoFixBannerData,
   ChalkStroke,
   ChalkTone,
   DrawingTool,
   LanguageMode,
   LiveSimTelemetry,
   PhysicsSimulation,
+  SceneMode,
   SolverStudioTab,
   ThemeMode,
   WhatIfPrompt,
@@ -50,7 +54,10 @@ import { CompareStage } from './components/CompareStage';
 import { SolverStudioView } from './components/SolverStudioView';
 import { AirforceXHubView } from './components/AirforceXHubView';
 import { AudioControlStrip } from './components/AudioControlStrip';
+import { NarratorBar } from './components/NarratorBar';
+import { FullScreenExperimentModal } from './components/FullScreenExperimentModal';
 import { stopPhysicsAudio } from './utils/physicsAudio';
+import { narratorEngine } from './utils/narratorEngine';
 
 const STORAGE_CUSTOM_SIMS = 'physicalive_custom_sims_v1';
 const STORAGE_POLARITY = 'physicalive_bw_polarity';
@@ -118,9 +125,13 @@ export default function App() {
   const [telemetry, setTelemetry] = useState<LiveSimTelemetry | null>(null);
   const [activeProofId, setActiveProofId] = useState<string | null>(null);
 
-  // Presenter, Compare Mode & Monochrome Chalkboard state
+  // Presenter, Compare Mode, Full-Screen Experiment, Real-Life Scene & Chalkboard state
   const [isPresenterMode, setIsPresenterMode] = useState(false);
   const [isCompareMode, setIsCompareMode] = useState(false);
+  const [sceneMode, setSceneMode] = useState<SceneMode>('lab');
+  const [isFullScreenExp, setIsFullScreenExp] = useState(false);
+  const [lastChangedVarKey, setLastChangedVarKey] = useState<string | null>(null);
+  const [autoFixBanner, setAutoFixBanner] = useState<AutoFixBannerData | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawTool, setDrawTool] = useState<DrawingTool>('pen');
   const [drawTone, setDrawTone] = useState<ChalkTone>('primary');
@@ -172,10 +183,11 @@ export default function App() {
     } catch {}
   }, [customSimulations]);
 
-  // Silence continuous physics audio immediately when leaving simulator view or entering compare mode
+  // Silence continuous physics audio & TTS narrator immediately when leaving simulator view or entering compare mode
   useEffect(() => {
     if (view !== 'simulation' || isCompareMode) {
       stopPhysicsAudio();
+      narratorEngine.stopSpeaking();
     }
   }, [view, isCompareMode]);
 
@@ -199,6 +211,7 @@ export default function App() {
   const selectSimulation = useCallback(
     (id: string) => {
       stopProofAnimation();
+      narratorEngine.stopSpeaking();
       const target = allSimulations.find((s) => s.id === id);
       if (!target) return;
       setActiveSimId(target.id);
@@ -208,12 +221,56 @@ export default function App() {
         setPracticeChapterId(target.chapterId);
       }
       setActiveProofId(null);
+      setLastChangedVarKey(null);
+      setAutoFixBanner(null);
       setStrokes([]);
       setIsPlaying(true);
       setResetToken((t) => t + 1);
       setView('simulation');
     },
     [allSimulations]
+  );
+
+  const handleAutoFixConcept = useCallback(
+    (data: AutoFixBannerData) => {
+      stopProofAnimation();
+      const target =
+        allSimulations.find((s) => s.id === data.simId) ?? BUILTIN_SIMULATIONS[0];
+      const baseParams = getDefaultParams(target);
+      const mergedParams = {
+        ...baseParams,
+        ...(data.appliedParams ?? target.presets?.[0]?.params ?? {}),
+      };
+      setActiveSimId(target.id);
+      setParams(mergedParams);
+      setUse3D(true);
+      setSceneMode('lab');
+      setIsCompareMode(false);
+      setIsPresenterMode(false);
+      setIsFullScreenExp(false);
+      setIsDrawing(false);
+      if (!target.isCustom) {
+        setPracticeChapterId(target.chapterId);
+      }
+      setActiveProofId(null);
+      setLastChangedVarKey(null);
+      setStrokes([]);
+      setAutoFixBanner(data);
+      setIsPlaying(true);
+      setResetToken((t) => t + 1);
+      setView('simulation');
+      narratorEngine.speakBilingual(
+        { en: data.explanationEn, hi: data.explanationHi },
+        language,
+        'autofix'
+      );
+      showToast(
+        language === 'hi'
+          ? '3D लैब में अवधारणा ऑटो-फ़िक्स सक्रिय'
+          : 'Concept Auto-Fix loaded live in 3D'
+      );
+    },
+    [allSimulations, language, showToast]
   );
 
   const openPracticeForChapter = useCallback((chapterId: string) => {
@@ -254,11 +311,27 @@ export default function App() {
     setView('solver');
   }, [activeSimulation]);
 
-  const handleParamChange = useCallback((key: string, value: number) => {
-    stopProofAnimation();
-    setActiveProofId(null);
-    setParams((prev) => ({ ...prev, [key]: value }));
-  }, []);
+  const handleParamChange = useCallback(
+    (key: string, value: number) => {
+      stopProofAnimation();
+      setActiveProofId(null);
+      setLastChangedVarKey(key);
+      const nextParams = { ...params, [key]: value };
+      setParams(nextParams);
+      if (!isCompareMode) {
+        narratorEngine.narrateSliderChange(
+          activeSimulation,
+          key,
+          value,
+          nextParams,
+          telemetry,
+          sceneMode,
+          language
+        );
+      }
+    },
+    [params, isCompareMode, activeSimulation, telemetry, sceneMode, language]
+  );
 
   const handleApplyParams = useCallback((nextParams: Record<string, number>) => {
     stopProofAnimation();
@@ -516,6 +589,7 @@ export default function App() {
             theme={theme}
             onToggleTheme={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}
             onLaunchSimulation={selectSimulation}
+            onAutoFixConcept={handleAutoFixConcept}
             onOpenFormulaSheet={() => setView('sheet')}
           />
         )}
@@ -539,6 +613,7 @@ export default function App() {
             initialChapterId={practiceChapterId}
             language={language}
             onLaunchChapterSim={launchChapterSimulation}
+            onAutoFixConcept={handleAutoFixConcept}
             onOpenAirforceHub={() => setView('airforce')}
           />
         )}
@@ -854,10 +929,84 @@ export default function App() {
                       </button>
                     )}
 
+                    {!isCompareMode && (
+                      <div
+                        className="inline-flex items-center p-0.5 rounded-lg border-2 border-black dark:border-white"
+                        role="group"
+                        aria-label="Lab vs Real-Life scene mode"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setSceneMode('lab')}
+                          className={`px-2.5 py-1.5 text-xs font-bold rounded-md transition-colors whitespace-nowrap cursor-pointer ${
+                            sceneMode === 'lab'
+                              ? 'bg-black text-white dark:bg-white dark:text-black'
+                              : 'text-black dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900'
+                          }`}
+                        >
+                          {getBilingualPrimary(UI_TEXT.labView, language)}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSceneMode('reallife')}
+                          className={`px-2.5 py-1.5 text-xs font-bold rounded-md transition-colors whitespace-nowrap cursor-pointer ${
+                            sceneMode === 'reallife'
+                              ? 'bg-black text-white dark:bg-white dark:text-black'
+                              : 'text-black dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900'
+                          }`}
+                        >
+                          {getBilingualPrimary(UI_TEXT.realLifeView, language)}
+                        </button>
+                      </div>
+                    )}
+
                     <AudioControlStrip
                       language={language}
                       simId={isCompareMode ? undefined : activeSimulation.id}
+                      showNarrator={!isCompareMode}
+                      onToggleNarrator={() =>
+                        narratorEngine.toggleEnabled(
+                          activeSimulation,
+                          params,
+                          telemetry,
+                          sceneMode,
+                          language
+                        )
+                      }
                     />
+
+                    {!isCompareMode && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          narratorEngine.narrateWhyDidThatHappen(
+                            activeSimulation,
+                            params,
+                            telemetry,
+                            sceneMode,
+                            language,
+                            lastChangedVarKey
+                          )
+                        }
+                        title={getBilingualPrimary(UI_TEXT.whyHappened, language)}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg border-2 border-black dark:border-white bg-white dark:bg-black text-black dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors whitespace-nowrap cursor-pointer"
+                      >
+                        <HelpCircle className="w-3.5 h-3.5" />
+                        <span>{language === 'hi' ? 'ऐसा क्यों?' : 'Why?'}</span>
+                      </button>
+                    )}
+
+                    {!isCompareMode && (
+                      <button
+                        type="button"
+                        onClick={() => setIsFullScreenExp(true)}
+                        title={getBilingualPrimary(UI_TEXT.fullScreen, language)}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg border-2 border-black dark:border-white bg-black text-white dark:bg-white dark:text-black hover:opacity-85 transition-opacity whitespace-nowrap cursor-pointer"
+                      >
+                        <Maximize2 className="w-3.5 h-3.5" />
+                        <span>{getBilingualPrimary(UI_TEXT.fullScreen, language)}</span>
+                      </button>
+                    )}
 
                     <button
                       type="button"
@@ -938,6 +1087,52 @@ export default function App() {
                   />
                 )}
 
+                {/* Bilingual Adaptive Narrator & Simplifier Bar */}
+                {!isCompareMode && (
+                  <NarratorBar
+                    simulation={activeSimulation}
+                    params={params}
+                    telemetry={telemetry}
+                    sceneMode={sceneMode}
+                    language={language}
+                    lastChangedVarKey={lastChangedVarKey}
+                  />
+                )}
+
+                {/* Wrong-Answer Live Concept Auto-Fix Banner */}
+                {autoFixBanner && !isCompareMode && (
+                  <div className="rounded-xl border-2 border-black dark:border-white bg-white dark:bg-black p-4 space-y-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-[11px] font-mono font-extrabold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
+                          {language === 'hi'
+                            ? 'अवधारणा लाइव ऑटो-फ़िक्स (3D प्रमाण)'
+                            : 'CONCEPT AUTO-FIX · LIVE 3D PROOF'}
+                        </div>
+                        <div className="text-sm font-extrabold text-black dark:text-white mt-0.5">
+                          {autoFixBanner.questionSnippet}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setAutoFixBanner(null)}
+                        aria-label="Dismiss Concept Auto-Fix banner"
+                        className="p-1.5 rounded-lg border-2 border-black dark:border-white text-black dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black cursor-pointer shrink-0"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <p className="text-xs sm:text-sm font-semibold text-black dark:text-white leading-relaxed">
+                      {language === 'hi' ? autoFixBanner.explanationHi : autoFixBanner.explanationEn}
+                    </p>
+                    {language === 'dual' && autoFixBanner.explanationHi && (
+                      <p className="text-xs font-medium text-neutral-700 dark:text-neutral-300 leading-relaxed">
+                        {autoFixBanner.explanationHi}
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {/* SIDE-BY-SIDE COMPARE STAGE OR SINGLE 2D/3D STAGE */}
                 {isCompareMode ? (
                   <CompareStage
@@ -956,45 +1151,56 @@ export default function App() {
                 ) : (
                   <>
                     {/* 60fps Pure B&W Physics Canvas (2D or Interactive 3D Three.js Stage) + Chalkboard */}
-                    {activeSimulation.supports3D && use3D ? (
-                      <Simulation3DCanvas
-                        simulation={activeSimulation}
-                        params={params}
-                        isPlaying={isPlaying}
-                        simSpeed={simSpeed}
-                        showVectors={showVectors}
-                        showGrid={showGrid}
-                        theme={theme}
-                        language={language}
-                        resetToken={resetToken}
-                        stepToken={stepToken}
-                        isDrawing={isDrawing}
-                        drawTool={drawTool}
-                        drawTone={drawTone}
-                        strokes={strokes}
-                        onAddStroke={(stroke) => setStrokes((prev) => [...prev, stroke])}
-                        onTelemetry={setTelemetry}
-                        tall={isPresenterMode}
-                      />
+                    {!isFullScreenExp ? (
+                      activeSimulation.supports3D && use3D ? (
+                        <Simulation3DCanvas
+                          simulation={activeSimulation}
+                          params={params}
+                          isPlaying={isPlaying}
+                          simSpeed={simSpeed}
+                          showVectors={showVectors}
+                          showGrid={showGrid}
+                          theme={theme}
+                          language={language}
+                          sceneMode={sceneMode}
+                          resetToken={resetToken}
+                          stepToken={stepToken}
+                          isDrawing={isDrawing}
+                          drawTool={drawTool}
+                          drawTone={drawTone}
+                          strokes={strokes}
+                          onAddStroke={(stroke) => setStrokes((prev) => [...prev, stroke])}
+                          onTelemetry={setTelemetry}
+                          tall={isPresenterMode}
+                        />
+                      ) : (
+                        <SimulationCanvas
+                          simulation={activeSimulation}
+                          params={params}
+                          isPlaying={isPlaying}
+                          simSpeed={simSpeed}
+                          showVectors={showVectors}
+                          showGrid={showGrid}
+                          theme={theme}
+                          language={language}
+                          sceneMode={sceneMode}
+                          resetToken={resetToken}
+                          stepToken={stepToken}
+                          isDrawing={isDrawing}
+                          drawTool={drawTool}
+                          drawTone={drawTone}
+                          strokes={strokes}
+                          onAddStroke={(stroke) => setStrokes((prev) => [...prev, stroke])}
+                          onTelemetry={setTelemetry}
+                          tall={isPresenterMode}
+                        />
+                      )
                     ) : (
-                      <SimulationCanvas
-                        simulation={activeSimulation}
-                        params={params}
-                        isPlaying={isPlaying}
-                        simSpeed={simSpeed}
-                        showVectors={showVectors}
-                        showGrid={showGrid}
-                        theme={theme}
-                        resetToken={resetToken}
-                        stepToken={stepToken}
-                        isDrawing={isDrawing}
-                        drawTool={drawTool}
-                        drawTone={drawTone}
-                        strokes={strokes}
-                        onAddStroke={(stroke) => setStrokes((prev) => [...prev, stroke])}
-                        onTelemetry={setTelemetry}
-                        tall={isPresenterMode}
-                      />
+                      <div className="h-[440px] rounded-xl border-2 border-dashed border-black dark:border-white flex items-center justify-center text-sm font-mono font-bold text-black dark:text-white">
+                        {language === 'hi'
+                          ? 'फ़ुल-स्क्रीन प्रयोग मोड सक्रिय है'
+                          : 'Full-Screen Live Experiment Mode Active'}
+                      </div>
                     )}
 
                     {/* High-Contrast B&W Real-Time Graph */}
@@ -1048,6 +1254,51 @@ export default function App() {
           </div>
         </footer>
       )}
+
+      {/* Full-Screen Live Experiment Modal */}
+      <FullScreenExperimentModal
+        open={isFullScreenExp && !isCompareMode}
+        onClose={() => setIsFullScreenExp(false)}
+        simulation={activeSimulation}
+        params={params}
+        telemetry={telemetry}
+        onParamChange={handleParamChange}
+        onApplyPreset={handleApplyParams}
+        onResetDefaults={handleResetDefaults}
+        isPlaying={isPlaying}
+        onTogglePlay={() => setIsPlaying((p) => !p)}
+        onStep={() => {
+          setIsPlaying(false);
+          setStepToken((s) => s + 1);
+        }}
+        onResetSim={() => setResetToken((r) => r + 1)}
+        simSpeed={simSpeed}
+        onSpeedChange={setSimSpeed}
+        is3DView={Boolean(activeSimulation.supports3D && use3D)}
+        onToggle3D={setUse3D}
+        sceneMode={sceneMode}
+        onSceneModeChange={setSceneMode}
+        showVectors={showVectors}
+        onToggleVectors={() => setShowVectors((v) => !v)}
+        showGrid={showGrid}
+        onToggleGrid={() => setShowGrid((g) => !g)}
+        isDrawing={isDrawing}
+        onToggleDrawing={() => setIsDrawing((d) => !d)}
+        drawTool={drawTool}
+        onDrawToolChange={setDrawTool}
+        drawTone={drawTone}
+        onDrawToneChange={setDrawTone}
+        strokes={strokes}
+        onAddStroke={(stroke) => setStrokes((prev) => [...prev, stroke])}
+        onUndoStroke={() => setStrokes((prev) => prev.slice(0, -1))}
+        onClearStrokes={() => setStrokes([])}
+        resetToken={resetToken}
+        stepToken={stepToken}
+        theme={theme}
+        language={language}
+        onTelemetry={setTelemetry}
+        lastChangedVarKey={lastChangedVarKey}
+      />
 
       {/* High-Contrast Inverted Toast */}
       {toast && (

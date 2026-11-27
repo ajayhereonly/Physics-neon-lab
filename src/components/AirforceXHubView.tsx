@@ -16,6 +16,7 @@ import {
 import {
   AirforceHubTab,
   AirforceMockRecord,
+  AutoFixBannerData,
   LanguageMode,
   ThemeMode,
 } from '../types/physics';
@@ -50,6 +51,7 @@ interface AirforceXHubViewProps {
   theme: ThemeMode;
   onToggleTheme: () => void;
   onLaunchSimulation: (simId: string) => void;
+  onAutoFixConcept?: (data: AutoFixBannerData) => void;
   onOpenFormulaSheet: () => void;
 }
 
@@ -73,6 +75,7 @@ export const AirforceXHubView: React.FC<AirforceXHubViewProps> = ({
   theme,
   onToggleTheme,
   onLaunchSimulation,
+  onAutoFixConcept,
   onOpenFormulaSheet,
 }) => {
   const [activeTab, setActiveTab] = useState<AirforceHubTab>('cbt-mock');
@@ -336,6 +339,7 @@ export const AirforceXHubView: React.FC<AirforceXHubViewProps> = ({
           onAddErrors={handleAddErrors}
           onSaveMockRecord={handleSaveMockRecord}
           onLaunchSimulation={onLaunchSimulation}
+          onAutoFixConcept={onAutoFixConcept}
         />
       )}
 
@@ -348,6 +352,7 @@ export const AirforceXHubView: React.FC<AirforceXHubViewProps> = ({
           onToggleErrorBook={handleToggleErrorBook}
           onAddErrors={handleAddErrors}
           onLaunchSimulation={onLaunchSimulation}
+          onAutoFixConcept={onAutoFixConcept}
         />
       )}
 
@@ -506,6 +511,7 @@ export const AirforceXHubView: React.FC<AirforceXHubViewProps> = ({
           onClearMockHistory={handleClearMockHistory}
           onOpenChapterPyqs={handleOpenChapterPyqs}
           onLaunchSimulation={onLaunchSimulation}
+          onAutoFixConcept={onAutoFixConcept}
         />
       )}
 

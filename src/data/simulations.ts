@@ -3,6 +3,7 @@ import { EXTRA_SIMULATIONS } from './simulationsExtra';
 import { REMAINING_SIMULATIONS_11 } from './simulationsRemaining11';
 import { REMAINING_SIMULATIONS_12 } from './simulationsRemaining12';
 import { FOUNDATION_SIMULATIONS } from './simulationsFoundation';
+import { AIRFORCE_X_SIMULATIONS } from './simulationsAirforceX';
 
 export const CHAPTERS: ChapterInfo[] = [
   // ================= CLASS 11 (15 CHAPTERS) =================
@@ -296,6 +297,16 @@ export const CHAPTERS: ChapterInfo[] = [
     summary: {
       en: 'P–N junction diode forward/reverse bias, depletion layer width, and I–V curve.',
       hi: 'P–N संधि डायोड अग्र/पश्च बायस, अवक्षय परत और I–V अभिलाक्षणिक वक्र।',
+    },
+  },
+  {
+    id: 'communication-systems',
+    number: '30',
+    classLevel: 'Class 12',
+    name: { en: 'Communication Systems (Airforce X)', hi: 'संचार व्यवस्था (एयरफोर्स X)' },
+    summary: {
+      en: 'AM/FM modulation index, sideband power, λ/4 antenna height, and line-of-sight range d = √(2Rh).',
+      hi: 'AM/FM मॉडुलन सूचकांक, साइडबैंड शक्ति, λ/4 एंटीना ऊँचाई और रेडियो क्षितिज परास d = √(2Rh)।',
     },
   },
 ];
@@ -1593,13 +1604,14 @@ const CORE_SIMULATIONS: PhysicsSimulation[] = [
   },
 ];
 
-// Order all 59 built-in simulations cleanly to match CHAPTERS order (Class 11 Ch 01–15 → Class 12 Ch 16–29)
+// Order all 66 built-in simulations cleanly to match CHAPTERS order (Class 11 Ch 01–15 → Class 12 Ch 16–30)
 const ALL_RAW_SIMS: PhysicsSimulation[] = [
   ...CORE_SIMULATIONS,
   ...EXTRA_SIMULATIONS,
   ...REMAINING_SIMULATIONS_11,
   ...REMAINING_SIMULATIONS_12,
   ...FOUNDATION_SIMULATIONS,
+  ...AIRFORCE_X_SIMULATIONS,
 ];
 const chapterOrderMap = new Map(CHAPTERS.map((c, idx) => [c.id, idx]));
 export const BUILTIN_SIMULATIONS: PhysicsSimulation[] = [...ALL_RAW_SIMS].sort(

@@ -1789,9 +1789,345 @@ const REGISTRY: Record<string, FormulaDerivationSpec> = {
       },
     ],
   },
+
+  // ===== 7 AIRFORCE X GROUP HIGH-YIELD SIMULATIONS =====
+  'communication-systems': {
+    simId: 'communication-systems',
+    steps: [
+      {
+        title: { en: 'AM Modulation Index & Bandwidth', hi: 'AM मॉडुलन सूचकांक और बैंडचौड़ाई' },
+        equation: 'm_a = A_m / A_c = (A_max − A_min)/(A_max + A_min)   |   BW = 2·f_m',
+        note: { en: 'Keep m_a ≤ 1 to prevent distortion; AM occupies f_c − f_m to f_c + f_m.', hi: 'विकृति रोकने के लिए m_a ≤ 1 रखते हैं।' },
+      },
+      {
+        title: { en: 'Line-of-Sight Radio Horizon Range', hi: 'दृष्टि-रेखा (LOS) एंटीना परास' },
+        equation: 'd_max = √(2·R·h_T) + √(2·R·h_R)   (R = 6.4 × 10⁶ m)',
+        note: { en: 'Antenna height h = λ/4 ensures efficient radiation; coverage area A = 2πRh_T.', hi: 'अधिकतम प्रसारण हेतु h_min = λ/4 आवश्यक है।' },
+      },
+    ],
+    solvers: [
+      {
+        id: 'dmax',
+        targetSymbol: 'd_max',
+        targetLabel: { en: 'Max LOS Range (d_max)', hi: 'अधिकतम LOS परास (d_max)' },
+        unit: 'km',
+        rearrangedFormula: 'd_max = √(2·R·h_T) + √(2·R·h_R)',
+        inputs: [
+          { key: 'hT', symbol: 'h_T', label: { en: 'Transmitter Height', hi: 'प्रेषी ऊँचाई' }, unit: 'm', defaultValue: 160, min: 1 },
+          { key: 'hR', symbol: 'h_R', label: { en: 'Receiver Height', hi: 'अभिग्राही ऊँचाई' }, unit: 'm', defaultValue: 40, min: 0 },
+        ],
+        solve: (v) => {
+          const hT = num(v, 'hT', 160), hR = num(v, 'hR', 40);
+          const d = (Math.sqrt(2 * 6.4e6 * hT) + Math.sqrt(2 * 6.4e6 * hR)) / 1000;
+          return { value: d, substituted: `d = √(2R·${hT}) + √(2R·${hR}) = ${d.toFixed(2)} km` };
+        },
+      },
+      {
+        id: 'ptRatio',
+        targetSymbol: 'P_t/P_c',
+        targetLabel: { en: 'Total to Carrier Power Ratio', hi: 'कुल / वाहक शक्ति अनुपात' },
+        unit: '×',
+        rearrangedFormula: 'P_t / P_c = 1 + m_a² / 2',
+        inputs: [
+          { key: 'ma', symbol: 'm_a', label: { en: 'Modulation Index', hi: 'मॉडुलन सूचकांक' }, unit: '', defaultValue: 0.6, min: 0 },
+        ],
+        solve: (v) => {
+          const ma = num(v, 'ma', 0.6);
+          const r = 1 + (ma * ma) / 2;
+          return { value: r, substituted: `1 + (${ma})²/2 = ${r.toFixed(3)}×` };
+        },
+      },
+    ],
+  },
+
+  'transistor-zener': {
+    simId: 'transistor-zener',
+    steps: [
+      {
+        title: { en: 'Current Conservation & Gain Link (α ↔ β)', hi: 'धारा संरक्षण व α–β संबंध' },
+        equation: 'I_E = I_B + I_C   ⇒   β = α / (1 − α)   |   α = β / (1 + β)',
+        note: { en: 'Because I_B is tiny (~μA), α is just below 1 (e.g. 0.98) while β is large (e.g. 49–200).', hi: 'α सदैव 1 से थोड़ा कम (जैसे 0.98) जबकि β बड़ा (49–200) होता है।' },
+      },
+      {
+        title: { en: 'CE Voltage & Power Gain', hi: 'CE वोल्टेज एवं शक्ति लाभ' },
+        equation: 'A_v = β · (R_L / R_in)   |   A_p = β · A_v = β² · (R_L / R_in)',
+        note: { en: 'Common-Emitter amplifier provides both high voltage and power gain with a 180° phase shift.', hi: 'CE प्रवर्धक उच्च वोल्टेज व शक्ति लाभ के साथ 180° कलांतर देता है।' },
+      },
+    ],
+    solvers: [
+      {
+        id: 'alpha',
+        targetSymbol: 'α',
+        targetLabel: { en: 'CB Current Gain (α)', hi: 'CB धारा लाभ (α)' },
+        unit: '',
+        rearrangedFormula: 'α = β / (1 + β)',
+        inputs: [
+          { key: 'beta', symbol: 'β', label: { en: 'CE Current Gain', hi: 'CE धारा लाभ' }, unit: '', defaultValue: 100, min: 1 },
+        ],
+        solve: (v) => {
+          const b = num(v, 'beta', 100);
+          const a = b / (1 + b);
+          return { value: a, substituted: `α = ${b} / (1 + ${b}) = ${a.toFixed(4)}` };
+        },
+      },
+      {
+        id: 'Av',
+        targetSymbol: 'A_v',
+        targetLabel: { en: 'Voltage Gain (A_v)', hi: 'वोल्टेज लाभ (A_v)' },
+        unit: '×',
+        rearrangedFormula: 'A_v = β · (R_L / R_in)',
+        inputs: [
+          { key: 'beta', symbol: 'β', label: { en: 'Current Gain β', hi: 'धारा लाभ β' }, unit: '', defaultValue: 100, min: 1 },
+          { key: 'RL', symbol: 'R_L', label: { en: 'Load Res', hi: 'लोड प्रतिरोध' }, unit: 'kΩ', defaultValue: 4, min: 0.1 },
+          { key: 'Rin', symbol: 'R_in', label: { en: 'Input Res', hi: 'निवेशी प्रतिरोध' }, unit: 'kΩ', defaultValue: 1, min: 0.1 },
+        ],
+        solve: (v) => {
+          const b = num(v, 'beta', 100), RL = num(v, 'RL', 4), Rin = num(v, 'Rin', 1);
+          if (Rin <= 0) return { error: 'R_in must be > 0.' };
+          const Av = b * (RL / Rin);
+          return { value: Av, substituted: `A_v = ${b} × (${RL}/${Rin}) = ${Av.toFixed(1)}×` };
+        },
+      },
+    ],
+  },
+
+  'gravity-variation': {
+    simId: 'gravity-variation',
+    steps: [
+      {
+        title: { en: 'Gravity Inside vs Outside Earth', hi: 'पृथ्वी के भीतर और बाहर g का मान' },
+        equation: 'Depth d: g_d = g·(1 − d/R)   |   Altitude h: g_h = g·R²/(R + h)²',
+        note: { en: 'For small heights (h ≪ R), g_h ≈ g(1 − 2h/R), so equal drop occurs at d = 2h.', hi: 'अल्प ऊँचाई पर g में समान कमी के लिए d = 2h होता है।' },
+      },
+      {
+        title: { en: 'Effect of Earth’s Rotation', hi: 'पृथ्वी घूर्णन का प्रभाव' },
+        equation: 'g′ = g − ω²·R·cos²λ   (Weightless at equator if ω = √(g/R) ≈ 17·ω₀)',
+        note: { en: 'Poles (λ = 90°) are completely unaffected by Earth’s rotation.', hi: 'ध्रुवों (λ = 90°) पर घूर्णन का कोई प्रभाव नहीं पड़ता।' },
+      },
+    ],
+    solvers: [
+      {
+        id: 'gh',
+        targetSymbol: 'g_h',
+        targetLabel: { en: 'Gravity at Altitude h (g_h)', hi: 'ऊँचाई h पर गुरुत्व (g_h)' },
+        unit: 'm/s²',
+        rearrangedFormula: 'g_h = 9.8 / (1 + h/R)²',
+        inputs: [
+          { key: 'h', symbol: 'h', label: { en: 'Altitude', hi: 'ऊँचाई' }, unit: 'km', defaultValue: 6400, min: 0 },
+        ],
+        solve: (v) => {
+          const h = num(v, 'h', 6400);
+          const gh = 9.8 / Math.pow(1 + h / 6400, 2);
+          return { value: gh, substituted: `g_h = 9.8 / (1 + ${h}/6400)² = ${gh.toFixed(3)} m/s²` };
+        },
+      },
+      {
+        id: 'gd',
+        targetSymbol: 'g_d',
+        targetLabel: { en: 'Gravity at Depth d (g_d)', hi: 'गहराई d पर गुरुत्व (g_d)' },
+        unit: 'm/s²',
+        rearrangedFormula: 'g_d = 9.8 · (1 − d / R)',
+        inputs: [
+          { key: 'd', symbol: 'd', label: { en: 'Depth Below Surface', hi: 'गहराई' }, unit: 'km', defaultValue: 3200, min: 0, max: 6400 },
+        ],
+        solve: (v) => {
+          const d = num(v, 'd', 3200);
+          const gd = Math.max(0, 9.8 * (1 - d / 6400));
+          return { value: gd, substituted: `g_d = 9.8 × (1 − ${d}/6400) = ${gd.toFixed(3)} m/s²` };
+        },
+      },
+    ],
+  },
+
+  'blackbody-cooling': {
+    simId: 'blackbody-cooling',
+    steps: [
+      {
+        title: { en: 'Wien’s Displacement Law', hi: 'वीन का विस्थापन नियम' },
+        equation: 'λ_m · T = b = 2.898 × 10⁻³ m·K',
+        note: { en: 'Peak emission wavelength is inversely proportional to Kelvin temperature T.', hi: 'शीर्ष तरंगदैर्घ्य परम ताप T के व्युत्क्रमानुपाती होता है।' },
+      },
+      {
+        title: { en: 'Stefan–Boltzmann 4th Power Law', hi: 'स्टीफ़न–बोल्ट्ज़मान नियम' },
+        equation: 'E = e · σ · T⁴   (σ = 5.67 × 10⁻⁸ W·m⁻²·K⁻⁴)',
+        note: { en: 'Doubling absolute temperature T increases emitted power by 2⁴ = 16 times!', hi: 'परम ताप दोगुना करने पर विकिरण शक्ति 16 गुनी हो जाती है!' },
+      },
+    ],
+    solvers: [
+      {
+        id: 'lamM',
+        targetSymbol: 'λ_m',
+        targetLabel: { en: 'Peak Wavelength (λ_m)', hi: 'शीर्ष तरंगदैर्घ्य (λ_m)' },
+        unit: 'nm',
+        rearrangedFormula: 'λ_m = 2.898×10⁶ / T(K)',
+        inputs: [
+          { key: 'T', symbol: 'T', label: { en: 'Temperature', hi: 'परम ताप' }, unit: 'K', defaultValue: 5000, min: 100 },
+        ],
+        solve: (v) => {
+          const T = num(v, 'T', 5000);
+          if (T <= 0) return { error: 'T must be > 0 K.' };
+          const lam = 2.898e6 / T;
+          return { value: lam, substituted: `λ_m = 2.898×10⁶ / ${T} = ${lam.toFixed(1)} nm` };
+        },
+      },
+      {
+        id: 'flux',
+        targetSymbol: 'E',
+        targetLabel: { en: 'Radiated Flux (E = eσT⁴)', hi: 'विकिरण प्रवाह (E)' },
+        unit: 'MW/m²',
+        rearrangedFormula: 'E = e · 5.67×10⁻⁸ · T⁴',
+        inputs: [
+          { key: 'T', symbol: 'T', label: { en: 'Temperature', hi: 'परम ताप' }, unit: 'K', defaultValue: 5000, min: 100 },
+          { key: 'emissivity', symbol: 'e', label: { en: 'Emissivity', hi: 'उत्सर्जकता' }, unit: '', defaultValue: 1, min: 0.05, max: 1 },
+        ],
+        solve: (v) => {
+          const T = num(v, 'T', 5000), e = num(v, 'emissivity', 1);
+          const E = (e * 5.67e-8 * Math.pow(T, 4)) / 1e6;
+          return { value: E, substituted: `E = ${e}×5.67×10⁻⁸×${T}⁴ = ${E.toFixed(2)} MW/m²` };
+        },
+      },
+    ],
+  },
+
+  'organ-pipes-beats': {
+    simId: 'organ-pipes-beats',
+    steps: [
+      {
+        title: { en: 'Open vs Closed Organ Pipe Harmonics', hi: 'खुले बनाम बंद ऑर्गन पाइप के संनादी' },
+        equation: 'Open: f_n = n·v/(2L) (All)   |   Closed: f_k = (2k−1)·v/(4L) (Odd only)',
+        note: { en: 'For equal length L, f_open = 2 · f_closed.', hi: 'समान लंबाई के लिए खुला पाइप बंद पाइप से दोगुनी मूल आवृत्ति देता है।' },
+      },
+      {
+        title: { en: 'Beat Frequency Principle', hi: 'विस्पंद आवृत्ति नियम' },
+        equation: 'f_beat = |f₁ − f₂|   (Waxing lowers f; Filing raises f)',
+        note: { en: 'Loading a tuning fork with wax increases mass and lowers its frequency.', hi: 'मोम लगाने से स्वरित्र की आवृत्ति घटती है और घिसने से बढ़ती है।' },
+      },
+    ],
+    solvers: [
+      {
+        id: 'fOpen',
+        targetSymbol: 'f_open',
+        targetLabel: { en: 'Open Pipe Frequency', hi: 'खुला पाइप आवृत्ति' },
+        unit: 'Hz',
+        rearrangedFormula: 'f_n = n · 340 / (2·L)',
+        inputs: [
+          { key: 'mode', symbol: 'n', label: { en: 'Harmonic n', hi: 'संनादी n' }, unit: '', defaultValue: 1, min: 1 },
+          { key: 'L', symbol: 'L', label: { en: 'Pipe Length', hi: 'पाइप लंबाई' }, unit: 'm', defaultValue: 0.85, min: 0.05 },
+        ],
+        solve: (v) => {
+          const n = num(v, 'mode', 1), L = num(v, 'L', 0.85);
+          if (L <= 0) return { error: 'L must be > 0.' };
+          const f = (n * 340) / (2 * L);
+          return { value: f, substituted: `f = ${n}×340 / (2×${L}) = ${f.toFixed(1)} Hz` };
+        },
+      },
+      {
+        id: 'fClosed',
+        targetSymbol: 'f_closed',
+        targetLabel: { en: 'Closed Pipe Fundamental', hi: 'बंद पाइप मूल आवृत्ति' },
+        unit: 'Hz',
+        rearrangedFormula: 'f₁ = 340 / (4·L)',
+        inputs: [
+          { key: 'L', symbol: 'L', label: { en: 'Pipe Length', hi: 'पाइप लंबाई' }, unit: 'm', defaultValue: 0.85, min: 0.05 },
+        ],
+        solve: (v) => {
+          const L = num(v, 'L', 0.85);
+          if (L <= 0) return { error: 'L must be > 0.' };
+          const f = 340 / (4 * L);
+          return { value: f, substituted: `f₁ = 340 / (4×${L}) = ${f.toFixed(1)} Hz` };
+        },
+      },
+    ],
+  },
+
+  'potentiometer-cells': {
+    simId: 'potentiometer-cells',
+    steps: [
+      {
+        title: { en: 'Null-Point EMF & Internal Resistance', hi: 'शून्य-विक्षेप विधि और आंतरिक प्रतिरोध' },
+        equation: 'E = k · l₁   |   V = k · l₂   ⇒   r = R · (l₁ − l₂) / l₂',
+        note: { en: 'Zero current flows through the galvanometer at balance, eliminating voltmeter loading error.', hi: 'संतुलन बिंदु पर धारामापी में धारा शून्य होती है।' },
+      },
+      {
+        title: { en: 'Series vs Parallel Cell Grouping', hi: 'सेलों का श्रेणी बनाम समांतर संयोजन' },
+        equation: 'I_series = nE / (R + nr)   |   I_parallel = mE / (mR + r)',
+        note: { en: 'Choose Series when external load R ≫ r; choose Parallel when R ≪ r.', hi: 'R ≫ r होने पर श्रेणीक्रम तथा R ≪ r होने पर समांतर क्रम श्रेष्ठ है।' },
+      },
+    ],
+    solvers: [
+      {
+        id: 'rInt',
+        targetSymbol: 'r',
+        targetLabel: { en: 'Internal Resistance (r)', hi: 'आंतरिक प्रतिरोध (r)' },
+        unit: 'Ω',
+        rearrangedFormula: 'r = R · (l₁ − l₂) / l₂',
+        inputs: [
+          { key: 'Rext', symbol: 'R', label: { en: 'Shunt Resistance', hi: 'शंट प्रतिरोध' }, unit: 'Ω', defaultValue: 6, min: 0.1 },
+          { key: 'l1', symbol: 'l₁', label: { en: 'Open Null Length', hi: 'खुला संतुलन l₁' }, unit: 'cm', defaultValue: 60, min: 1 },
+          { key: 'l2', symbol: 'l₂', label: { en: 'Shunted Length', hi: 'शंट संतुलन l₂' }, unit: 'cm', defaultValue: 45, min: 1 },
+        ],
+        solve: (v) => {
+          const R = num(v, 'Rext', 6), l1 = num(v, 'l1', 60), l2 = num(v, 'l2', 45);
+          if (l2 <= 0) return { error: 'l₂ must be > 0.' };
+          const r = R * ((l1 - l2) / l2);
+          return { value: r, substituted: `r = ${R} × (${l1} − ${l2}) / ${l2} = ${r.toFixed(2)} Ω` };
+        },
+      },
+    ],
+  },
+
+  'eye-defects': {
+    simId: 'eye-defects',
+    steps: [
+      {
+        title: { en: 'Myopia (Short-Sightedness) Correction', hi: 'निकट-दृष्टि दोष संशोधन' },
+        equation: 'u = −∞, v = −d_far  ⇒  f = −d_far  ⇒  P = −100 / d_far(cm)',
+        note: { en: 'Requires a diverging CONCAVE lens (negative power in Diopters).', hi: 'इसके लिए ऋणात्मक क्षमता का अवतल लेंस प्रयुक्त होता है।' },
+      },
+      {
+        title: { en: 'Hypermetropia (Long-Sightedness) Correction', hi: 'दूर-दृष्टि दोष संशोधन' },
+        equation: 'u = −25 cm, v = −d_near  ⇒  P = 4 − 100 / d_near(cm)',
+        note: { en: 'Requires a converging CONVEX lens (positive power in Diopters).', hi: 'इसके लिए धनात्मक क्षमता का उत्तल लेंस प्रयुक्त होता है।' },
+      },
+    ],
+    solvers: [
+      {
+        id: 'pMyopia',
+        targetSymbol: 'P_myo',
+        targetLabel: { en: 'Myopia Lens Power', hi: 'निकट-दृष्टि लेंस क्षमता' },
+        unit: 'D',
+        rearrangedFormula: 'P = −100 / d_far(cm)',
+        inputs: [
+          { key: 'farPt', symbol: 'd_far', label: { en: 'Far Point', hi: 'दूर बिंदु' }, unit: 'cm', defaultValue: 100, min: 10 },
+        ],
+        solve: (v) => {
+          const d = num(v, 'farPt', 100);
+          if (d <= 0) return { error: 'd_far must be > 0.' };
+          const P = -100 / d;
+          return { value: P, substituted: `P = −100 / ${d} = ${P.toFixed(2)} D (Concave)` };
+        },
+      },
+      {
+        id: 'pHyper',
+        targetSymbol: 'P_hyp',
+        targetLabel: { en: 'Hypermetropia Lens Power', hi: 'दूर-दृष्टि लेंस क्षमता' },
+        unit: 'D',
+        rearrangedFormula: 'P = 4 − 100 / d_near(cm)',
+        inputs: [
+          { key: 'nearPt', symbol: 'd_near', label: { en: 'Near Point', hi: 'निकट बिंदु' }, unit: 'cm', defaultValue: 50, min: 26 },
+        ],
+        solve: (v) => {
+          const d = num(v, 'nearPt', 50);
+          if (d <= 25) return { error: 'Near point must be > 25 cm.' };
+          const P = 4 - 100 / d;
+          return { value: P, substituted: `P = 4 − 100/${d} = +${P.toFixed(2)} D (Convex)` };
+        },
+      },
+    ],
+  },
 };
 
-// Automatic fallback spec generator so ALL 59 built-in + custom AI sims have working derivations & solvers
+// Automatic fallback spec generator so ALL 66 built-in + custom AI sims have working derivations & solvers
 function buildFallbackSpec(sim: PhysicsSimulation): FormulaDerivationSpec {
   const mainVar = sim.variables[0];
   const secondVar = sim.variables[1];

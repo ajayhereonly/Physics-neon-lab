@@ -5,7 +5,84 @@ export interface BilingualText {
 
 export type LanguageMode = 'en' | 'hi' | 'dual';
 export type ThemeMode = 'dark' | 'light';
-export type AppView = 'simulation' | 'solver' | 'chapters' | 'practice' | 'custom' | 'sheet';
+export type AppView =
+  | 'simulation'
+  | 'solver'
+  | 'airforce'
+  | 'chapters'
+  | 'practice'
+  | 'custom'
+  | 'sheet';
+
+export type AirforceHubTab =
+  | 'cbt-mock'
+  | 'topic-pyq'
+  | 'concepts-labs'
+  | 'shortcuts'
+  | 'flashcards'
+  | 'weightage-errors'
+  | 'print-mock';
+
+export type AirforcePYQType = 'Direct Formula' | 'Concept Trap' | 'Ratio Trick';
+
+export interface AirforcePYQ {
+  id: string;
+  chapterId: string;
+  simId: string;
+  yearTag: string;
+  questionType: AirforcePYQType;
+  question: BilingualText;
+  options: BilingualText[];
+  correctIndex: number;
+  shortcut20s: BilingualText;
+  solution: BilingualText;
+}
+
+export interface AirforceShortcut {
+  id: string;
+  chapterId: string;
+  category: 'Mechanics' | 'Thermal & Waves' | 'Electricity & Magnetism' | 'Optics & Modern';
+  title: BilingualText;
+  formulaTrick: string;
+  whenToUse: BilingualText;
+  workedExample: BilingualText;
+  simId: string;
+}
+
+export interface AirforceFlashcard {
+  id: string;
+  chapterId: string;
+  category:
+    | 'Units & Dimensions'
+    | 'Mechanics'
+    | 'Thermal & Waves'
+    | 'Electricity & Magnetism'
+    | 'Optics & Modern';
+  prompt: BilingualText;
+  answer: BilingualText;
+}
+
+export interface AirforceChapterWeightage {
+  chapterId: string;
+  expectedQuestions: string;
+  priority: 'High' | 'Medium' | 'Low';
+  keyExamFocus: BilingualText;
+}
+
+export interface AirforceMockRecord {
+  id: string;
+  timestamp: number;
+  setLabel: string;
+  negativeMarking: boolean;
+  netScore: number;
+  maxScore: number;
+  correct: number;
+  wrong: number;
+  skipped: number;
+  accuracyPct: number;
+  passedCutoff: boolean;
+  durationSec: number;
+}
 
 export type SolverStudioGroup = 'solve-derive' | 'boards' | 'teaching';
 export type SolverStudioTab =
@@ -139,6 +216,7 @@ export interface PhysicsSimulation {
   chapterName?: BilingualText;
   shortTabLabel?: BilingualText;
   isFoundation?: boolean;
+  isAirforceX?: boolean;
   isCustom?: boolean;
   supports3D?: boolean;
   default3D?: boolean;

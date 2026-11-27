@@ -23,6 +23,7 @@ import {
   getSimulationsByChapter,
 } from './data/simulations';
 import { ALL_PRACTICE_QUESTIONS } from './data/questionBank';
+import { AIRFORCE_X_PYQS } from './data/airforceXBoosters';
 import {
   AppView,
   ChalkStroke,
@@ -47,6 +48,7 @@ import { FormulaSheetView } from './components/FormulaSheetView';
 import { ChalkboardToolbar } from './components/ChalkboardToolbar';
 import { CompareStage } from './components/CompareStage';
 import { SolverStudioView } from './components/SolverStudioView';
+import { AirforceXHubView } from './components/AirforceXHubView';
 
 const STORAGE_CUSTOM_SIMS = 'physicalive_custom_sims_v1';
 const STORAGE_POLARITY = 'physicalive_bw_polarity';
@@ -391,9 +393,9 @@ export default function App() {
               [
                 { id: 'simulation', label: UI_TEXT.simulation },
                 { id: 'solver', label: UI_TEXT.solver },
+                { id: 'airforce', label: UI_TEXT.airforceX },
                 { id: 'chapters', label: UI_TEXT.chapters },
                 { id: 'practice', label: UI_TEXT.practice },
-                { id: 'sheet', label: UI_TEXT.formulaSheet },
               ] as const
             ).map((item) => {
               const isActive = view === item.id && !isPresenterMode;
@@ -453,9 +455,9 @@ export default function App() {
               [
                 { id: 'simulation', label: UI_TEXT.simulation },
                 { id: 'solver', label: UI_TEXT.solver },
+                { id: 'airforce', label: UI_TEXT.airforceX },
                 { id: 'chapters', label: UI_TEXT.chapters },
                 { id: 'practice', label: UI_TEXT.practice },
-                { id: 'sheet', label: UI_TEXT.formulaSheet },
               ] as const
             ).map((item) => (
               <button
@@ -494,6 +496,18 @@ export default function App() {
             launchToken={solverLaunch.token}
             onLaunchSimulation={selectSimulation}
             onOpenCustomGenerator={() => setView('custom')}
+            onOpenFormulaSheet={() => setView('sheet')}
+          />
+        )}
+
+        {view === 'airforce' && !isPresenterMode && (
+          <AirforceXHubView
+            language={language}
+            onLanguageChange={setLanguage}
+            theme={theme}
+            onToggleTheme={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}
+            onLaunchSimulation={selectSimulation}
+            onOpenFormulaSheet={() => setView('sheet')}
           />
         )}
 
@@ -507,6 +521,7 @@ export default function App() {
             onOpenPractice={openPracticeForChapter}
             onDeleteCustom={handleDeleteCustom}
             onOpenCustomGenerator={() => setView('custom')}
+            onOpenFormulaSheet={() => setView('sheet')}
           />
         )}
 
@@ -515,6 +530,7 @@ export default function App() {
             initialChapterId={practiceChapterId}
             language={language}
             onLaunchChapterSim={launchChapterSimulation}
+            onOpenAirforceHub={() => setView('airforce')}
           />
         )}
 
@@ -1013,7 +1029,7 @@ export default function App() {
               PhysicaLive · High-Contrast Projector Edition (Class 11–12 Physics)
             </span>
             <span>
-              {CHAPTERS.length} Chapters · {BUILTIN_SIMULATIONS.length} Live Labs · {ALL_PRACTICE_QUESTIONS.length} Practice Qs · {count3DRigs} 3D WebGL
+              {CHAPTERS.length} Chapters · {BUILTIN_SIMULATIONS.length} Live Labs · {ALL_PRACTICE_QUESTIONS.length} Practice Qs · {AIRFORCE_X_PYQS.length} Airforce X PYQs · {count3DRigs} 3D WebGL
             </span>
           </div>
         </footer>

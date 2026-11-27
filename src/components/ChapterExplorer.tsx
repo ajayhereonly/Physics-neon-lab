@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { ArrowRight, BookOpen, Search, Sparkles, Trash2 } from 'lucide-react';
+import { ArrowRight, BookOpen, FileSpreadsheet, Search, Sparkles, Trash2 } from 'lucide-react';
 import { CHAPTERS } from '../data/simulations';
 import { getQuestionsByChapter } from '../data/questionBank';
+import { getAirforcePyqsByChapter } from '../data/airforceXBoosters';
 import { LanguageMode, PhysicsSimulation } from '../types/physics';
 import { getBilingualPrimary, getBilingualSecondary, UI_TEXT } from '../utils/bilingual';
 
@@ -14,6 +15,7 @@ interface ChapterExplorerProps {
   onOpenPractice: (chapterId: string) => void;
   onDeleteCustom: (id: string) => void;
   onOpenCustomGenerator: () => void;
+  onOpenFormulaSheet: () => void;
 }
 
 export function ChapterExplorer({
@@ -25,9 +27,10 @@ export function ChapterExplorer({
   onOpenPractice,
   onDeleteCustom,
   onOpenCustomGenerator,
+  onOpenFormulaSheet,
 }: ChapterExplorerProps) {
   const [query, setQuery] = useState('');
-  const [classFilter, setClassFilter] = useState<'all' | 'foundation' | 'Class 11' | 'Class 12'>('all');
+  const [classFilter, setClassFilter] = useState<'all' | 'foundation' | 'airforce' | 'Class 11' | 'Class 12'>('all');
 
   const normalizedQuery = query.trim().toLowerCase();
 
@@ -36,6 +39,8 @@ export function ChapterExplorer({
       const chSims = simulations.filter((s) => s.chapterId === ch.id);
       if (classFilter === 'foundation') {
         if (!chSims.some((s) => s.isFoundation)) return false;
+      } else if (classFilter === 'airforce') {
+        if (!chSims.some((s) => s.isAirforceX)) return false;
       } else if (classFilter !== 'all' && ch.classLevel !== classFilter) {
         return false;
       }
@@ -73,6 +78,15 @@ export function ChapterExplorer({
         <div className="flex flex-wrap items-center gap-2.5">
           <button
             type="button"
+            onClick={onOpenFormulaSheet}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg border-2 border-black dark:border-white text-black dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors whitespace-nowrap cursor-pointer"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            <span>{getBilingualPrimary(UI_TEXT.formulaSheet, language)}</span>
+          </button>
+
+          <button
+            type="button"
             onClick={onOpenCustomGenerator}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg bg-black text-white dark:bg-white dark:text-black hover:opacity-85 transition-opacity whitespace-nowrap cursor-pointer"
           >
@@ -80,8 +94,8 @@ export function ChapterExplorer({
             <span>{language === 'hi' ? '+ कस्टम AI लैब' : '+ Custom AI Lab'}</span>
           </button>
 
-          <div className="flex items-center gap-1 p-1 rounded-lg border-2 border-black dark:border-white">
-            {(['all', 'foundation', 'Class 11', 'Class 12'] as const).map((lvl) => (
+          <div className="flex flex-wrap items-center gap-1 p-1 rounded-lg border-2 border-black dark:border-white">
+            {(['all', 'foundation', 'airforce', 'Class 11', 'Class 12'] as const).map((lvl) => (
               <button
                 key={lvl}
                 type="button"
@@ -94,13 +108,17 @@ export function ChapterExplorer({
               >
                 {lvl === 'all'
                   ? language === 'hi'
-                    ? 'सभी (29)'
-                    : 'All Chapters'
+                    ? `सभी (${CHAPTERS.length})`
+                    : `All (${CHAPTERS.length})`
                   : lvl === 'foundation'
                     ? language === 'hi'
                       ? 'बेसिक (8)'
-                      : 'Basic Foundation'
-                    : lvl}
+                      : 'Basic (8)'
+                    : lvl === 'airforce'
+                      ? language === 'hi'
+                        ? 'एयरफोर्स X (7)'
+                        : 'Airforce X (7)'
+                      : lvl}
               </button>
             ))}
           </div>
@@ -186,6 +204,7 @@ export function ChapterExplorer({
           const chapterSims = simulations.filter((s) => s.chapterId === chapter.id);
           const has3D = chapterSims.some((s) => s.supports3D);
           const qCount = getQuestionsByChapter(chapter.id).length;
+          const pyqCount = getAirforcePyqsByChapter(chapter.id).length;
 
           return (
             <section
@@ -209,6 +228,12 @@ export function ChapterExplorer({
                       <span>{qCount} Qs</span>
                     </>
                   )}
+                  {pyqCount > 0 && (
+                    <>
+                      <span className="mx-1.5" aria-hidden="true">·</span>
+                      <span>{pyqCount} IAF PYQs</span>
+                    </>
+                  )}
                 </div>
                 <h2 className="mt-1 text-xl font-bold text-black dark:text-white">
                   {getBilingualPrimary(chapter.name, language)}
@@ -226,7 +251,9 @@ export function ChapterExplorer({
               <div className="space-y-2.5 pt-3 border-t-2 border-neutral-300 dark:border-neutral-700">
                 {(classFilter === 'foundation'
                   ? chapterSims.filter((s) => s.isFoundation)
-                  : chapterSims
+                  : classFilter === 'airforce'
+                    ? chapterSims.filter((s) => s.isAirforceX)
+                    : chapterSims
                 ).map((sim) => {
                   const isActive = sim.id === activeSimId;
                   return (
@@ -245,6 +272,9 @@ export function ChapterExplorer({
                           {getBilingualPrimary(sim.title, language)}
                           {sim.isFoundation && (
                             <span className="ml-1.5 font-mono text-xs opacity-80">· Basic</span>
+                          )}
+                          {sim.isAirforceX && (
+                            <span className="ml-1.5 font-mono text-xs opacity-80">· Airforce X</span>
                           )}
                           {sim.supports3D && (
                             <span className="ml-1.5 font-mono text-xs opacity-80">· 3D</span>

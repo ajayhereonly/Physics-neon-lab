@@ -6,6 +6,7 @@ import {
   Compass,
   Contrast,
   Cpu,
+  FileSpreadsheet,
   FileText,
   Ruler,
   Scale,
@@ -41,6 +42,7 @@ interface SolverStudioViewProps {
   launchToken?: number;
   onLaunchSimulation: (simId: string) => void;
   onOpenCustomGenerator: () => void;
+  onOpenFormulaSheet?: () => void;
 }
 
 interface TabDef {
@@ -94,6 +96,7 @@ export function SolverStudioView({
   launchToken = 0,
   onLaunchSimulation,
   onOpenCustomGenerator,
+  onOpenFormulaSheet,
 }: SolverStudioViewProps) {
   const [activeTab, setActiveTab] = useState<SolverStudioTab>(initialTab);
   const [activeGroup, setActiveGroup] = useState<SolverStudioGroup>(() =>
@@ -159,6 +162,16 @@ export function SolverStudioView({
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          {onOpenFormulaSheet && (
+            <button
+              type="button"
+              onClick={onOpenFormulaSheet}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg border-2 border-black dark:border-white bg-white dark:bg-black text-black dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors whitespace-nowrap cursor-pointer"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>{language === 'hi' ? 'सूत्र पत्रक' : 'Formula Sheet'}</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={onOpenCustomGenerator}

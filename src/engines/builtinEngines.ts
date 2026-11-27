@@ -13,6 +13,7 @@ import { stepAndRenderExtendedSim } from './extendedEngines';
 import { stepAndRenderRemaining11 } from './remainingEngines11';
 import { stepAndRenderRemaining12 } from './remainingEngines12';
 import { stepAndRenderFoundationSim } from './foundationEngines';
+import { stepAndRenderAirforceXSim } from './airforceXEngines';
 
 export interface SimRenderContext {
   ctx: CanvasRenderingContext2D;
@@ -49,6 +50,7 @@ export function stepAndRenderBuiltinSim(rc: SimRenderContext): LiveSimTelemetry 
 
   let telemetry: LiveSimTelemetry;
   const extendedTelemetry =
+    stepAndRenderAirforceXSim(rc, palette) ??
     stepAndRenderFoundationSim(rc, palette) ??
     stepAndRenderExtendedSim(rc, palette) ??
     stepAndRenderRemaining11(rc, palette) ??

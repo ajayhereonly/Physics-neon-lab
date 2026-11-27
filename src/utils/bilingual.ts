@@ -10,15 +10,25 @@ export function getBilingualSecondary(text: BilingualText, lang: LanguageMode): 
   return null;
 }
 
+export function formatBilingual(text: BilingualText, lang: LanguageMode): string {
+  if (lang === 'hi') return text.hi;
+  if (lang === 'dual' && text.hi && text.hi !== text.en) {
+    return `${text.en} — ${text.hi}`;
+  }
+  return text.en;
+}
+
 export const UI_TEXT = {
   chapters: { en: 'Chapters', hi: 'अध्याय' },
   simulation: { en: 'Simulation', hi: 'सिमुलेशन' },
   solver: { en: 'Solver', hi: 'सॉल्वर व टूल्स' },
+  airforceX: { en: 'Airforce X', hi: 'एयरफोर्स X' },
   practice: { en: 'Practice', hi: 'अभ्यास प्रश्न' },
   customFormula: { en: 'Custom AI Lab', hi: 'कस्टम AI लैब' },
   formulaSheet: { en: 'Formula Sheet', hi: 'फ़ॉर्मूला शीट' },
   openInSolver: { en: 'Open in Solver', hi: 'सॉल्वर में खोलें' },
   fullDerivation: { en: 'Board Derivation', hi: 'बोर्ड व्युत्पत्ति' },
+  airforcePyqs: { en: 'Airforce X PYQs', hi: 'एयरफोर्स X PYQ' },
   presenterMode: { en: 'Presenter Mode', hi: 'प्रेज़ेंटर मोड' },
   exitPresenter: { en: 'Exit Presenter', hi: 'प्रेज़ेंटर बंद करें' },
   play: { en: 'Play', hi: 'चलाएँ' },

@@ -16,12 +16,14 @@ export function FormulaSheetView({
   onLaunchSimulation,
 }: FormulaSheetViewProps) {
   const [search, setSearch] = useState('');
-  const [classFilter, setClassFilter] = useState<'all' | 'foundation' | 'Class 11' | 'Class 12'>('all');
+  const [classFilter, setClassFilter] = useState<'all' | 'foundation' | 'airforce' | 'Class 11' | 'Class 12'>('all');
   const q = search.trim().toLowerCase();
 
   const filtered = allSimulations.filter((sim) => {
     if (classFilter === 'foundation') {
       if (!sim.isFoundation) return false;
+    } else if (classFilter === 'airforce') {
+      if (!sim.isAirforceX) return false;
     } else if (classFilter !== 'all') {
       const ch = CHAPTERS.find((c) => c.id === sim.chapterId);
       if (!ch || ch.classLevel !== classFilter) return false;
@@ -44,7 +46,7 @@ export function FormulaSheetView({
     if (!ch) return '';
     return `${ch.number}. ${getBilingualPrimary(ch.name, language)} · ${ch.classLevel}${
       sim.isFoundation ? ' · Basic' : ''
-    }${sim.supports3D ? ' · 3D' : ''}`;
+    }${sim.isAirforceX ? ' · Airforce X' : ''}${sim.supports3D ? ' · 3D' : ''}`;
   };
 
   return (
@@ -75,8 +77,8 @@ export function FormulaSheetView({
           </h1>
           <p className="mt-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-300">
             {language === 'hi'
-              ? 'कक्षा 11–12 के सभी 29 अध्यायों के सूत्र — सीधे लाइव सिमुलेशन खोलें या A4 PDF प्रिंट करें।'
-              : 'All 29 NCERT Class 11–12 chapters linked directly to live 2D/3D simulations with one-click B&W PDF print.'}
+              ? `कक्षा 11–12 के सभी ${CHAPTERS.length} अध्यायों के सूत्र — सीधे लाइव सिमुलेशन खोलें या A4 PDF प्रिंट करें।`
+              : `All ${CHAPTERS.length} NCERT & Airforce X Group chapters linked directly to live 2D/3D simulations with one-click B&W PDF print.`}
           </p>
         </div>
 
@@ -90,8 +92,8 @@ export function FormulaSheetView({
             <span>{getBilingualPrimary(UI_TEXT.printFormulaSheet, language)}</span>
           </button>
 
-          <div className="flex items-center gap-1 p-1 rounded-lg border-2 border-black dark:border-white">
-            {(['all', 'foundation', 'Class 11', 'Class 12'] as const).map((lvl) => (
+          <div className="flex flex-wrap items-center gap-1 p-1 rounded-lg border-2 border-black dark:border-white">
+            {(['all', 'foundation', 'airforce', 'Class 11', 'Class 12'] as const).map((lvl) => (
               <button
                 key={lvl}
                 type="button"
@@ -110,7 +112,11 @@ export function FormulaSheetView({
                     ? language === 'hi'
                       ? 'बेसिक (8)'
                       : 'Basic (8)'
-                    : lvl}
+                    : lvl === 'airforce'
+                      ? language === 'hi'
+                        ? 'एयरफोर्स X (7)'
+                        : 'Airforce X (7)'
+                      : lvl}
               </button>
             ))}
           </div>

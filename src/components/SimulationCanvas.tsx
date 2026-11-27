@@ -10,6 +10,7 @@ import {
 import { resetBuiltinState, stepAndRenderBuiltinSim } from '../engines/builtinEngines';
 import { stepAndRenderCustomSim } from '../engines/customParametricEngine';
 import { ChalkboardOverlay } from './ChalkboardOverlay';
+import { stopPhysicsAudio, syncPhysicsAudioFrame } from '../utils/physicsAudio';
 
 interface SimulationCanvasProps {
   simulation: PhysicsSimulation;
@@ -51,6 +52,7 @@ export function SimulationCanvas({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stateRef = useRef<Record<string, any>>({});
+  const simTimeRef = useRef(0);
   const sizeRef = useRef<{ width: number; height: number }>({ width: 720, height: 420 });
 
   const propsRef = useRef({
@@ -76,6 +78,8 @@ export function SimulationCanvas({
 
   useEffect(() => {
     resetBuiltinState(stateRef.current);
+    simTimeRef.current = 0;
+    stopPhysicsAudio();
   }, [simulation.id, resetToken]);
 
   useEffect(() => {
@@ -160,6 +164,7 @@ export function SimulationCanvas({
           ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
           const p = propsRef.current;
           const dt = p.isPlaying ? rawDt * p.simSpeed : 0;
+          simTimeRef.current += dt;
 
           const telemetry = p.simulation.isCustom
             ? stepAndRenderCustomSim({
@@ -190,6 +195,19 @@ export function SimulationCanvas({
               });
           ctx.restore();
 
+          if (!p.simulation.isCustom) {
+            syncPhysicsAudioFrame(
+              p.simulation.id,
+              simTimeRef.current,
+              dt,
+              p.params,
+              p.isPlaying,
+              p.simSpeed
+            );
+          } else {
+            stopPhysicsAudio();
+          }
+
           if (now - lastTelemetryEmit >= 65) {
             lastTelemetryEmit = now;
             p.onTelemetry(telemetry);
@@ -200,7 +218,10 @@ export function SimulationCanvas({
     };
 
     rafId = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(rafId);
+    return () => {
+      stopPhysicsAudio();
+      cancelAnimationFrame(rafId);
+    };
   }, []);
 
   return (

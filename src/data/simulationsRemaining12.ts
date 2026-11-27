@@ -251,6 +251,7 @@ export const REMAINING_SIMULATIONS_12: PhysicsSimulation[] = [
   {
     id: 'transformer',
     chapterId: 'emi',
+    supports3D: true,
     shortTabLabel: { en: 'Transformer & Ratio', hi: 'ट्रांसफॉर्मर (Transformer)' },
     title: {
       en: 'Step-Up / Step-Down Transformer & Mutual Inductance',
@@ -312,6 +313,7 @@ export const REMAINING_SIMULATIONS_12: PhysicsSimulation[] = [
   {
     id: 'snell-prism-tir',
     chapterId: 'ray-optics',
+    supports3D: true,
     shortTabLabel: { en: 'Snell, Prism & TIR', hi: 'स्नेल, प्रिज्म व TIR' },
     title: {
       en: 'Snell’s Law, Critical Angle & Total Internal Reflection',
@@ -373,6 +375,7 @@ export const REMAINING_SIMULATIONS_12: PhysicsSimulation[] = [
   {
     id: 'microscope-telescope',
     chapterId: 'ray-optics',
+    supports3D: true,
     shortTabLabel: { en: 'Microscope & Telescope', hi: 'सूक्ष्मदर्शी व दूरदर्शी' },
     title: {
       en: 'Compound Microscope & Astronomical Telescope',

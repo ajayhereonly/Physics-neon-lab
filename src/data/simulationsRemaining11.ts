@@ -553,6 +553,7 @@ export const REMAINING_SIMULATIONS_11: PhysicsSimulation[] = [
   {
     id: 'simple-pendulum',
     chapterId: 'oscillations',
+    supports3D: true,
     shortTabLabel: { en: 'Simple Pendulum', hi: 'सरल लोलक (Pendulum)' },
     title: {
       en: 'Simple Pendulum & Time Period Law',
@@ -614,6 +615,7 @@ export const REMAINING_SIMULATIONS_11: PhysicsSimulation[] = [
   {
     id: 'doppler-effect',
     chapterId: 'waves',
+    supports3D: true,
     shortTabLabel: { en: 'Doppler Effect', hi: 'डॉपलर प्रभाव (Doppler)' },
     title: {
       en: 'Doppler Effect & Moving Wavefronts',

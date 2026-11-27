@@ -18,6 +18,7 @@ import {
 } from '../../data/airforceXBoosters';
 import { CHAPTERS } from '../../data/simulations';
 import { formatBilingual } from '../../utils/bilingual';
+import { playExamCue } from '../../utils/physicsAudio';
 
 const chapterById = new Map(CHAPTERS.map((c) => [c.id, c]));
 
@@ -364,7 +365,10 @@ export const AirforceFlashcardsWorkspace: React.FC<AirforceFlashcardsWorkspacePr
         <div className="max-w-3xl mx-auto space-y-4">
           <button
             type="button"
-            onClick={() => setFlipped((f) => !f)}
+            onClick={() => {
+              playExamCue('flip');
+              setFlipped((f) => !f);
+            }}
             className={`w-full min-h-[260px] p-6 sm:p-8 border-2 border-black dark:border-white text-left flex flex-col justify-between transition-colors ${
               flipped
                 ? 'bg-black text-white dark:bg-white dark:text-black'

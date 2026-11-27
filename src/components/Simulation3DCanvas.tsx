@@ -14,6 +14,24 @@ import {
 } from '../types/physics';
 import { getBilingualPrimary, UI_TEXT } from '../utils/bilingual';
 import { ChalkboardOverlay } from './ChalkboardOverlay';
+import { stopPhysicsAudio, syncPhysicsAudioFrame } from '../utils/physicsAudio';
+import {
+  buildEyeDefectsRig,
+  buildMicroscopeTelescopeRig,
+  buildSnellPrismTirRig,
+  buildThinLensRig,
+} from '../engines/rigs3d/optics3dRigs';
+import {
+  buildCommunicationSystemsRig,
+  buildDopplerEffectRig,
+  buildGravityVariationRig,
+  buildOrganPipesBeatsRig,
+} from '../engines/rigs3d/airforceWaves3dRigs';
+import {
+  buildNucleiRig,
+  buildSimplePendulumRig,
+  buildTransformerRig,
+} from '../engines/rigs3d/mechEmNuclear3dRigs';
 
 interface Simulation3DCanvasProps {
   simulation: PhysicsSimulation;
@@ -1335,6 +1353,28 @@ function buildRigForSim(simId: string, theme: ThemeMode): SceneRig {
       return buildGaussDipoleRig(theme);
     case 'solenoid-wires':
       return buildSolenoidWiresRig(theme);
+    case 'eye-defects':
+      return buildEyeDefectsRig(theme);
+    case 'thin-lens':
+      return buildThinLensRig(theme);
+    case 'snell-prism-tir':
+      return buildSnellPrismTirRig(theme);
+    case 'microscope-telescope':
+      return buildMicroscopeTelescopeRig(theme);
+    case 'gravity-variation':
+      return buildGravityVariationRig(theme);
+    case 'communication-systems':
+      return buildCommunicationSystemsRig(theme);
+    case 'organ-pipes-beats':
+      return buildOrganPipesBeatsRig(theme);
+    case 'doppler-effect':
+      return buildDopplerEffectRig(theme);
+    case 'simple-pendulum':
+      return buildSimplePendulumRig(theme);
+    case 'transformer':
+      return buildTransformerRig(theme);
+    case 'nuclei':
+      return buildNucleiRig(theme);
     default:
       return buildEMWavesRig(theme);
   }
@@ -1487,6 +1527,14 @@ export function Simulation3DCanvas({
 
       gridHelper.visible = p.showGrid;
       const telemetry = rig.update(dt, simTimeRef.current, p.params, p.showVectors);
+      syncPhysicsAudioFrame(
+        simulation.id,
+        simTimeRef.current,
+        dt,
+        p.params,
+        p.isPlaying,
+        p.simSpeed
+      );
 
       controls.update();
       renderer.render(scene, camera);
@@ -1509,6 +1557,7 @@ export function Simulation3DCanvas({
 
     return () => {
       disposed = true;
+      stopPhysicsAudio();
       cancelAnimationFrame(rafId);
       window.clearTimeout(timerId);
       resizeObserver.disconnect();

@@ -42,6 +42,7 @@ import {
 } from './airforce/AirforceShortcutsFlashcardsWorkspace';
 import { AirforceWeightageErrorBookWorkspace } from './airforce/AirforceWeightageErrorBookWorkspace';
 import { AirforcePrintMockWorkspace } from './airforce/AirforcePrintMockWorkspace';
+import { AudioControlStrip } from './AudioControlStrip';
 
 interface AirforceXHubViewProps {
   language: LanguageMode;
@@ -234,6 +235,7 @@ export const AirforceXHubView: React.FC<AirforceXHubViewProps> = ({
 
         {/* Studio Utility Actions */}
         <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <AudioControlStrip language={language} compact />
           <button
             type="button"
             onClick={onOpenFormulaSheet}

@@ -49,6 +49,8 @@ import { ChalkboardToolbar } from './components/ChalkboardToolbar';
 import { CompareStage } from './components/CompareStage';
 import { SolverStudioView } from './components/SolverStudioView';
 import { AirforceXHubView } from './components/AirforceXHubView';
+import { AudioControlStrip } from './components/AudioControlStrip';
+import { stopPhysicsAudio } from './utils/physicsAudio';
 
 const STORAGE_CUSTOM_SIMS = 'physicalive_custom_sims_v1';
 const STORAGE_POLARITY = 'physicalive_bw_polarity';
@@ -169,6 +171,13 @@ export default function App() {
       localStorage.setItem(STORAGE_CUSTOM_SIMS, JSON.stringify(customSimulations));
     } catch {}
   }, [customSimulations]);
+
+  // Silence continuous physics audio immediately when leaving simulator view or entering compare mode
+  useEffect(() => {
+    if (view !== 'simulation' || isCompareMode) {
+      stopPhysicsAudio();
+    }
+  }, [view, isCompareMode]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -844,6 +853,11 @@ export default function App() {
                         </span>
                       </button>
                     )}
+
+                    <AudioControlStrip
+                      language={language}
+                      simId={isCompareMode ? undefined : activeSimulation.id}
+                    />
 
                     <button
                       type="button"

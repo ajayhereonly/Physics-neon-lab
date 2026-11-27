@@ -856,6 +856,7 @@ export const EXTRA_SIMULATIONS: PhysicsSimulation[] = [
   {
     id: 'nuclei',
     chapterId: 'nuclei',
+    supports3D: true,
     title: {
       en: 'Radioactive Decay & Half-Life Law',
       hi: 'रेडियोधर्मी क्षय और अर्ध-आयु नियम',

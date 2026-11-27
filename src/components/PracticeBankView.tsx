@@ -17,6 +17,8 @@ import { getAirforcePyqsByChapter } from '../data/airforceXBoosters';
 import { LanguageMode, QuestionDifficulty } from '../types/physics';
 import { getBilingualPrimary, getBilingualSecondary, UI_TEXT } from '../utils/bilingual';
 import { ClassroomQuizRunner } from './ClassroomQuizRunner';
+import { AudioControlStrip } from './AudioControlStrip';
+import { playExamCue } from '../utils/physicsAudio';
 
 const STORAGE_QUIZ_ANSWERS = 'physicalive_quiz_answers_v1';
 
@@ -133,6 +135,12 @@ export function PracticeBankView({
   const handleSelectOption = (questionId: string, optionIdx: number) => {
     setAnswers((prev) => ({ ...prev, [questionId]: optionIdx }));
     setRevealedSolutions((prev) => ({ ...prev, [questionId]: true }));
+    const targetQ =
+      chapterQuestions.find((q) => q.id === questionId) ??
+      chapterAirforcePyqs.find((q) => q.id === questionId);
+    if (targetQ) {
+      playExamCue(optionIdx === targetQ.correctIndex ? 'correct' : 'wrong');
+    }
   };
 
   const handleResetChapter = () => {
@@ -214,6 +222,7 @@ export function PracticeBankView({
         </div>
 
         <div className="flex flex-wrap items-center gap-3 self-start md:self-auto">
+          <AudioControlStrip language={language} compact />
           {/* Study Bank <-> Classroom Quiz Mode Switcher */}
           <div className="flex items-center gap-1 p-1 rounded-lg border-2 border-black dark:border-white">
             <button

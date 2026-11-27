@@ -13,6 +13,7 @@ import {
 import { ChapterInfo, LanguageMode, PracticeQuestion } from '../types/physics';
 import { ALL_PRACTICE_QUESTIONS } from '../data/questionBank';
 import { getBilingualPrimary, getBilingualSecondary } from '../utils/bilingual';
+import { playExamCue } from '../utils/physicsAudio';
 
 interface ClassroomQuizRunnerProps {
   chapters: ChapterInfo[];
@@ -81,8 +82,12 @@ export function ClassroomQuizRunner({
   useEffect(() => {
     if (phase !== 'running' || secondsPerQ === 0 || timerPaused || revealed) return;
     if (timeLeft <= 0) {
+      playExamCue('warning');
       setRevealed(true);
       return;
+    }
+    if (timeLeft <= 5) {
+      playExamCue('tick');
     }
     const id = window.setInterval(() => {
       setTimeLeft((prev) => Math.max(0, prev - 1));
@@ -113,6 +118,7 @@ export function ClassroomQuizRunner({
     setPickedOption(idx);
     setRevealed(true);
     if (idx === currentQ.correctIndex) {
+      playExamCue('correct');
       if (scoringMode === 'solo') {
         setSoloScore((s) => s + 1);
         setAwardedThisQ('solo');
@@ -123,6 +129,8 @@ export function ClassroomQuizRunner({
         setTeamBScore((s) => s + 1);
         setAwardedThisQ('B');
       }
+    } else {
+      playExamCue('wrong');
     }
   };
 
@@ -137,6 +145,7 @@ export function ClassroomQuizRunner({
 
   const handleNextQuestion = () => {
     if (qIdx + 1 >= quizDeck.length) {
+      playExamCue('submit');
       setPhase('summary');
       return;
     }

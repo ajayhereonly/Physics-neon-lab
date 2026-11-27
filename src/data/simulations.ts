@@ -1505,6 +1505,7 @@ const CORE_SIMULATIONS: PhysicsSimulation[] = [
   {
     id: 'thin-lens',
     chapterId: 'ray-optics',
+    supports3D: true,
     title: {
       en: 'Thin Lens Formula & Ray Tracing',
       hi: 'पतले लेंस का सूत्र और किरण आरेख',

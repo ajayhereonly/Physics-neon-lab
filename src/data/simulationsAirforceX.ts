@@ -15,6 +15,8 @@ export const AIRFORCE_X_SIMULATIONS: PhysicsSimulation[] = [
     id: 'communication-systems',
     chapterId: 'communication-systems',
     isAirforceX: true,
+    supports3D: true,
+    default3D: true,
     shortTabLabel: { en: 'AM/FM & LOS Antenna', hi: 'AM/FM व एंटीना परास' },
     title: {
       en: 'Communication Systems: AM Modulation & Line-of-Sight Range',
@@ -126,6 +128,8 @@ export const AIRFORCE_X_SIMULATIONS: PhysicsSimulation[] = [
     id: 'gravity-variation',
     chapterId: 'gravitation',
     isAirforceX: true,
+    supports3D: true,
+    default3D: true,
     shortTabLabel: { en: 'Variation of g (h, d, λ)', hi: 'g का परिवर्तन (h, d, λ)' },
     title: {
       en: 'Variation of Gravity g with Altitude, Depth & Earth Rotation',
@@ -237,6 +241,8 @@ export const AIRFORCE_X_SIMULATIONS: PhysicsSimulation[] = [
     id: 'organ-pipes-beats',
     chapterId: 'waves',
     isAirforceX: true,
+    supports3D: true,
+    default3D: true,
     shortTabLabel: { en: 'Organ Pipes & Beats (X)', hi: 'ऑर्गन पाइप व विस्पंद (X)' },
     title: {
       en: 'Organ Pipes (Open vs Closed Harmonics) & Acoustic Beats',
@@ -341,6 +347,8 @@ export const AIRFORCE_X_SIMULATIONS: PhysicsSimulation[] = [
     id: 'eye-defects',
     chapterId: 'ray-optics',
     isAirforceX: true,
+    supports3D: true,
+    default3D: true,
     shortTabLabel: { en: 'Eye Defects & Power (X)', hi: 'नेत्र दोष व लेंस क्षमता (X)' },
     title: {
       en: 'Defects of Vision: Myopia, Hypermetropia & Corrective Lens Power',

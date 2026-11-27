@@ -14,6 +14,7 @@ import { AirforcePYQType, LanguageMode } from '../../types/physics';
 import { CHAPTERS } from '../../data/simulations';
 import { AIRFORCE_X_PYQS } from '../../data/airforceXBoosters';
 import { formatBilingual } from '../../utils/bilingual';
+import { playExamCue } from '../../utils/physicsAudio';
 
 interface AirforcePyqExplorerWorkspaceProps {
   language: LanguageMode;
@@ -71,6 +72,7 @@ export const AirforcePyqExplorerWorkspace: React.FC<AirforcePyqExplorerWorkspace
   const handlePickOption = (pyqId: string, optIdx: number, correctIndex: number) => {
     setPickedMap((prev) => ({ ...prev, [pyqId]: optIdx }));
     setRevealedMap((prev) => ({ ...prev, [pyqId]: true }));
+    playExamCue(optIdx === correctIndex ? 'correct' : 'wrong');
     if (optIdx !== correctIndex) {
       onAddErrors([pyqId]);
     }

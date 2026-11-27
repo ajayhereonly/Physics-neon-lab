@@ -41,6 +41,8 @@ export const UI_TEXT = {
   view3D: { en: '3D Stage', hi: '3D दृश्य' },
   view2D: { en: '2D Diagram', hi: '2D आरेख' },
   resetCamera: { en: 'Reset Camera', hi: 'कैमरा रीसेट' },
+  soundOn: { en: 'Sound On', hi: 'ध्वनि चालू' },
+  soundOff: { en: 'Sound Off', hi: 'ध्वनि बंद' },
   parameters: { en: 'Controls & Variables', hi: 'नियंत्रण और चर (Variables)' },
   liveOutputs: { en: 'Live Calculated Values', hi: 'लाइव गणना मान' },
   conceptGuide: { en: 'Concept Guide', hi: 'संकल्पना गाइड' },

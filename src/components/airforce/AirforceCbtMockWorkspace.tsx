@@ -15,6 +15,7 @@ import { AirforceMockRecord, AirforcePYQ, LanguageMode } from '../../types/physi
 import { CHAPTERS } from '../../data/simulations';
 import { AIRFORCE_MOCK_SETS, generateBalancedAirforceMock } from '../../data/airforceXBoosters';
 import { formatBilingual } from '../../utils/bilingual';
+import { playExamCue } from '../../utils/physicsAudio';
 
 interface AirforceCbtMockWorkspaceProps {
   language: LanguageMode;
@@ -104,6 +105,7 @@ export const AirforceCbtMockWorkspace: React.FC<AirforceCbtMockWorkspaceProps> =
       if (wrongIds.length > 0) {
         onAddErrors(wrongIds);
       }
+      playExamCue('submit');
       setPhase('submitted');
     },
     [activeSetLabel, answers, negativeMarking, onAddErrors, onSaveMockRecord, questions]
@@ -118,7 +120,13 @@ export const AirforceCbtMockWorkspace: React.FC<AirforceCbtMockWorkspaceProps> =
           finalizeExam(0);
           return 0;
         }
-        return prev - 1;
+        const next = prev - 1;
+        if (next === 120) {
+          playExamCue('warning');
+        } else if (next <= 10 && next > 0) {
+          playExamCue('tick');
+        }
+        return next;
       });
     }, 1000);
     return () => window.clearInterval(timer);

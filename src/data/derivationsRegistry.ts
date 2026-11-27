@@ -1263,9 +1263,535 @@ const REGISTRY: Record<string, FormulaDerivationSpec> = {
       },
     ],
   },
+
+  // ===== 8 BASIC FOUNDATION PHYSICS SIMULATIONS =====
+  'speed-velocity': {
+    simId: 'speed-velocity',
+    steps: [
+      {
+        title: { en: 'Scalar Distance vs Vector Displacement', hi: 'अदिश दूरी बनाम सदिश विस्थापन' },
+        equation: 'Distance d = v · t   |   θ = (v · t) / R',
+        note: { en: 'Path length grows continuously along the circular track regardless of direction.', hi: 'वृत्ताकार पथ पर तय की गई दूरी लगातार बढ़ती है।' },
+      },
+      {
+        title: { en: 'Chord Length for Circular Displacement', hi: 'वृत्ताकार पथ पर जीवा विस्थापन' },
+        equation: '|Δx⃗| = 2 · R · |sin(θ / 2)|   ⇒   |v⃗_avg| = |Δx⃗| / t',
+        note: { en: 'At half lap (θ = π), |Δx⃗| = 2R. At full lap (θ = 2π), |Δx⃗| = 0 so average velocity is strictly zero!', hi: 'पूर्ण चक्कर (θ = 2π) पर विस्थापन शून्य और औसत वेग शून्य हो जाता है।' },
+      },
+    ],
+    solvers: [
+      {
+        id: 'd',
+        targetSymbol: 'd',
+        targetLabel: { en: 'Distance Covered (d)', hi: 'तय दूरी (d)' },
+        unit: 'm',
+        rearrangedFormula: 'd = v · t',
+        inputs: [
+          { key: 'v', symbol: 'v', label: { en: 'Speed', hi: 'चाल' }, unit: 'm/s', defaultValue: 10, min: 0.1 },
+          { key: 't', symbol: 't', label: { en: 'Time', hi: 'समय' }, unit: 's', defaultValue: 15.5, min: 0.1 },
+        ],
+        solve: (v) => {
+          const spd = num(v, 'v', 10), t = num(v, 't', 15.5);
+          const d = spd * t;
+          return { value: d, substituted: `d = ${spd} × ${t} = ${d.toFixed(2)} m` };
+        },
+      },
+      {
+        id: 'v',
+        targetSymbol: 'v',
+        targetLabel: { en: 'Average Speed (v)', hi: 'औसत चाल (v)' },
+        unit: 'm/s',
+        rearrangedFormula: 'v = d / t',
+        inputs: [
+          { key: 'd', symbol: 'd', label: { en: 'Distance', hi: 'दूरी' }, unit: 'm', defaultValue: 155, min: 0.1 },
+          { key: 't', symbol: 't', label: { en: 'Time', hi: 'समय' }, unit: 's', defaultValue: 15.5, min: 0.01 },
+        ],
+        solve: (v) => {
+          const d = num(v, 'd', 155), t = num(v, 't', 15.5);
+          if (t <= 0) return { error: 'Time t must be > 0.' };
+          const spd = d / t;
+          return { value: spd, substituted: `v = ${d} / ${t} = ${spd.toFixed(2)} m/s` };
+        },
+      },
+      {
+        id: 'disp',
+        targetSymbol: '|Δx⃗|',
+        targetLabel: { en: 'Displacement on Circle (|Δx⃗|)', hi: 'विस्थापन (|Δx⃗|)' },
+        unit: 'm',
+        rearrangedFormula: '|Δx⃗| = 2·R·|sin(v·t / 2R)|',
+        inputs: [
+          { key: 'R', symbol: 'R', label: { en: 'Track Radius', hi: 'त्रिज्या' }, unit: 'm', defaultValue: 50, min: 1 },
+          { key: 'v', symbol: 'v', label: { en: 'Speed', hi: 'चाल' }, unit: 'm/s', defaultValue: 10, min: 0.1 },
+          { key: 't', symbol: 't', label: { en: 'Time', hi: 'समय' }, unit: 's', defaultValue: 15.5, min: 0.1 },
+        ],
+        solve: (v) => {
+          const R = num(v, 'R', 50), spd = num(v, 'v', 10), t = num(v, 't', 15.5);
+          if (R <= 0) return { error: 'Radius R must be > 0.' };
+          const theta = (spd * t) / R;
+          const dx = Math.abs(2 * R * Math.sin(theta / 2));
+          return { value: dx, substituted: `2(${R})·|sin(${(theta / 2).toFixed(2)} rad)| = ${dx.toFixed(2)} m` };
+        },
+      },
+    ],
+  },
+
+  'impulse-momentum': {
+    simId: 'impulse-momentum',
+    steps: [
+      {
+        title: { en: 'Newton’s Second Law in Momentum Form', hi: 'संवेग रूप में न्यूटन का द्वितीय नियम' },
+        equation: 'F_avg = Δp / Δt = m·(v − u) / Δt',
+        note: { en: 'Force equals the rate of change of linear momentum p = m·v.', hi: 'बल रैखिक संवेग परिवर्तन की दर के बराबर होता है।' },
+      },
+      {
+        title: { en: 'Impulse–Momentum Theorem', hi: 'आवेग–संवेग प्रमेय' },
+        equation: 'J = F_avg · Δt = Δp = m·(v − u)',
+        note: { en: 'For a fixed momentum change Δp, doubling contact time Δt halves the impact force F_avg.', hi: 'नियत Δp के लिए संपर्क समय Δt बढ़ाने से आघात बल घट जाता है।' },
+      },
+    ],
+    solvers: [
+      {
+        id: 'p',
+        targetSymbol: 'p',
+        targetLabel: { en: 'Linear Momentum (p = mv)', hi: 'रैखिक संवेग (p)' },
+        unit: 'kg·m/s',
+        rearrangedFormula: 'p = m · u',
+        inputs: [
+          { key: 'm', symbol: 'm', label: { en: 'Mass', hi: 'द्रव्यमान' }, unit: 'kg', defaultValue: 0.5, min: 0.01 },
+          { key: 'u', symbol: 'u', label: { en: 'Velocity', hi: 'वेग' }, unit: 'm/s', defaultValue: 20 },
+        ],
+        solve: (v) => {
+          const m = num(v, 'm', 0.5), u = num(v, 'u', 20);
+          const p = m * u;
+          return { value: p, substituted: `p = ${m} × ${u} = ${p.toFixed(2)} kg·m/s` };
+        },
+      },
+      {
+        id: 'Favg',
+        targetSymbol: 'F_avg',
+        targetLabel: { en: 'Average Stopping Force (F_avg)', hi: 'औसत आघात बल (F_avg)' },
+        unit: 'N',
+        rearrangedFormula: 'F_avg = (m · u) / Δt',
+        inputs: [
+          { key: 'm', symbol: 'm', label: { en: 'Mass', hi: 'द्रव्यमान' }, unit: 'kg', defaultValue: 0.5, min: 0.01 },
+          { key: 'u', symbol: 'u', label: { en: 'Initial Speed', hi: 'प्रारंभिक वेग' }, unit: 'm/s', defaultValue: 20, min: 0 },
+          { key: 'dtImpact', symbol: 'Δt', label: { en: 'Contact Time', hi: 'संपर्क समय' }, unit: 's', defaultValue: 0.1, min: 0.001 },
+        ],
+        solve: (v) => {
+          const m = num(v, 'm', 0.5), u = num(v, 'u', 20), dt = num(v, 'dtImpact', 0.1);
+          if (dt <= 0) return { error: 'Contact time Δt must be > 0.' };
+          const F = (m * u) / dt;
+          return { value: F, substituted: `F_avg = (${m} × ${u}) / ${dt} = ${F.toFixed(1)} N` };
+        },
+      },
+      {
+        id: 'dt',
+        targetSymbol: 'Δt',
+        targetLabel: { en: 'Stopping Time (Δt)', hi: 'संपर्क समय (Δt)' },
+        unit: 's',
+        rearrangedFormula: 'Δt = (m · u) / F_avg',
+        inputs: [
+          { key: 'm', symbol: 'm', label: { en: 'Mass', hi: 'द्रव्यमान' }, unit: 'kg', defaultValue: 0.5, min: 0.01 },
+          { key: 'u', symbol: 'u', label: { en: 'Initial Speed', hi: 'प्रारंभिक वेग' }, unit: 'm/s', defaultValue: 20, min: 0.1 },
+          { key: 'F', symbol: 'F_avg', label: { en: 'Average Force', hi: 'औसत बल' }, unit: 'N', defaultValue: 100, min: 0.1 },
+        ],
+        solve: (v) => {
+          const m = num(v, 'm', 0.5), u = num(v, 'u', 20), F = num(v, 'F', 100);
+          if (F <= 0) return { error: 'Force F must be > 0.' };
+          const dt = (m * u) / F;
+          return { value: dt, substituted: `Δt = (${m} × ${u}) / ${F} = ${dt.toFixed(3)} s` };
+        },
+      },
+    ],
+  },
+
+  'moment-of-inertia': {
+    simId: 'moment-of-inertia',
+    steps: [
+      {
+        title: { en: 'Moment of Inertia by Geometry Factor k', hi: 'आकृति गुणांक k के साथ जड़त्व आघूर्ण' },
+        equation: 'I = k · M · R²   (Sphere: 0.4, Disc: 0.5, Hollow: 0.67, Ring: 1.0)',
+        note: { en: 'Mass placed farther from the rotation axis contributes quadratically (∝ R²) to rotational inertia.', hi: 'अक्ष से दूरी R बढ़ने पर जड़त्व आघूर्ण R² के अनुपात में बढ़ता है।' },
+      },
+      {
+        title: { en: 'Rotational Newton’s Second Law', hi: 'घूर्णन हेतु न्यूटन का द्वितीय नियम' },
+        equation: 'τ = F · R = I · α   ⇒   α = τ / I = F / (k · M · R)',
+        note: { en: 'Under equal torque τ, a solid sphere accelerates 2.5× faster than a thin ring of the same M and R!', hi: 'समान बल आघूर्ण पर ठोस गोला वलय की तुलना में 2.5 गुना तेज़ त्वरित होता है।' },
+      },
+    ],
+    solvers: [
+      {
+        id: 'I',
+        targetSymbol: 'I',
+        targetLabel: { en: 'Moment of Inertia (I)', hi: 'जड़त्व आघूर्ण (I)' },
+        unit: 'kg·m²',
+        rearrangedFormula: 'I = k · M · R²',
+        inputs: [
+          { key: 'shape', symbol: 'k-id', label: { en: 'Shape (1:0.4 2:0.5 3:0.67 4:1)', hi: 'आकृति (1-4)' }, unit: '', defaultValue: 2, min: 1, max: 4 },
+          { key: 'M', symbol: 'M', label: { en: 'Mass', hi: 'द्रव्यमान' }, unit: 'kg', defaultValue: 6, min: 0.1 },
+          { key: 'R', symbol: 'R', label: { en: 'Radius', hi: 'त्रिज्या' }, unit: 'm', defaultValue: 0.8, min: 0.05 },
+        ],
+        solve: (v) => {
+          const s = Math.round(num(v, 'shape', 2));
+          const k = s === 1 ? 0.4 : s === 2 ? 0.5 : s === 3 ? 2 / 3 : 1.0;
+          const M = num(v, 'M', 6), R = num(v, 'R', 0.8);
+          const I = k * M * R * R;
+          return { value: I, substituted: `I = ${k.toFixed(2)} × ${M} × ${R}² = ${I.toFixed(3)} kg·m²` };
+        },
+      },
+      {
+        id: 'alpha',
+        targetSymbol: 'α',
+        targetLabel: { en: 'Angular Acceleration (α = τ/I)', hi: 'कोणीय त्वरण (α)' },
+        unit: 'rad/s²',
+        rearrangedFormula: 'α = (F · R) / (k · M · R²)',
+        inputs: [
+          { key: 'shape', symbol: 'k-id', label: { en: 'Shape (1-4)', hi: 'आकृति (1-4)' }, unit: '', defaultValue: 2, min: 1, max: 4 },
+          { key: 'M', symbol: 'M', label: { en: 'Mass', hi: 'द्रव्यमान' }, unit: 'kg', defaultValue: 6, min: 0.1 },
+          { key: 'R', symbol: 'R', label: { en: 'Radius', hi: 'त्रिज्या' }, unit: 'm', defaultValue: 0.8, min: 0.05 },
+          { key: 'F', symbol: 'F', label: { en: 'Tangential Force', hi: 'स्पर्श बल' }, unit: 'N', defaultValue: 12 },
+        ],
+        solve: (v) => {
+          const s = Math.round(num(v, 'shape', 2));
+          const k = s === 1 ? 0.4 : s === 2 ? 0.5 : s === 3 ? 2 / 3 : 1.0;
+          const M = num(v, 'M', 6), R = num(v, 'R', 0.8), F = num(v, 'F', 12);
+          if (M <= 0 || R <= 0) return { error: 'M and R must be > 0.' };
+          const tau = F * R;
+          const I = k * M * R * R;
+          const alpha = tau / I;
+          return { value: alpha, substituted: `α = ${tau.toFixed(2)} / ${I.toFixed(3)} = ${alpha.toFixed(2)} rad/s²` };
+        },
+      },
+      {
+        id: 'tau',
+        targetSymbol: 'τ',
+        targetLabel: { en: 'Torque (τ = F·R)', hi: 'बल आघूर्ण (τ)' },
+        unit: 'N·m',
+        rearrangedFormula: 'τ = F · R',
+        inputs: [
+          { key: 'F', symbol: 'F', label: { en: 'Tangential Force', hi: 'स्पर्श बल' }, unit: 'N', defaultValue: 12 },
+          { key: 'R', symbol: 'R', label: { en: 'Lever Arm Radius', hi: 'त्रिज्या' }, unit: 'm', defaultValue: 0.8, min: 0.01 },
+        ],
+        solve: (v) => {
+          const F = num(v, 'F', 12), R = num(v, 'R', 0.8);
+          const tau = F * R;
+          return { value: tau, substituted: `τ = ${F} × ${R} = ${tau.toFixed(2)} N·m` };
+        },
+      },
+    ],
+  },
+
+  'work-power-basic': {
+    simId: 'work-power-basic',
+    steps: [
+      {
+        title: { en: 'Scalar Dot Product for Mechanical Work', hi: 'कार्य का अदिश गुणनफल' },
+        equation: 'W = F⃗ · d⃗ = F · d · cos(θ)',
+        note: { en: 'Positive for 0° ≤ θ < 90°, zero at θ = 90°, negative for 90° < θ ≤ 180°.', hi: 'θ = 90° पर कार्य शून्य तथा θ > 90° पर ऋणात्मक होता है।' },
+      },
+      {
+        title: { en: 'Average & Instantaneous Power', hi: 'औसत एवं तात्क्षणिक शक्ति' },
+        equation: 'P = W / t = (F · d · cos θ) / t = F · v · cos(θ)',
+        note: { en: '1 Watt = 1 J/s; 1 Horsepower (hp) ≈ 746 W.', hi: '1 वाट = 1 जूल/सेकंड; 1 अश्वशक्ति (hp) ≈ 746 W।' },
+      },
+    ],
+    solvers: [
+      {
+        id: 'W',
+        targetSymbol: 'W',
+        targetLabel: { en: 'Work Done (W)', hi: 'किया गया कार्य (W)' },
+        unit: 'J',
+        rearrangedFormula: 'W = F · d · cos(θ)',
+        inputs: [
+          { key: 'F', symbol: 'F', label: { en: 'Force', hi: 'बल' }, unit: 'N', defaultValue: 40 },
+          { key: 'd', symbol: 'd', label: { en: 'Displacement', hi: 'विस्थापन' }, unit: 'm', defaultValue: 12 },
+          { key: 'theta', symbol: 'θ', label: { en: 'Angle', hi: 'कोण' }, unit: '°', defaultValue: 30 },
+        ],
+        solve: (v) => {
+          const F = num(v, 'F', 40), d = num(v, 'd', 12), th = num(v, 'theta', 30);
+          const W = F * d * Math.cos((th * Math.PI) / 180);
+          return { value: W, substituted: `W = ${F} × ${d} × cos(${th}°) = ${W.toFixed(2)} J` };
+        },
+      },
+      {
+        id: 'P',
+        targetSymbol: 'P',
+        targetLabel: { en: 'Average Power (P)', hi: 'औसत शक्ति (P)' },
+        unit: 'W',
+        rearrangedFormula: 'P = (F · d · cos θ) / t',
+        inputs: [
+          { key: 'F', symbol: 'F', label: { en: 'Force', hi: 'बल' }, unit: 'N', defaultValue: 40 },
+          { key: 'd', symbol: 'd', label: { en: 'Displacement', hi: 'विस्थापन' }, unit: 'm', defaultValue: 12 },
+          { key: 'theta', symbol: 'θ', label: { en: 'Angle', hi: 'कोण' }, unit: '°', defaultValue: 30 },
+          { key: 't', symbol: 't', label: { en: 'Time', hi: 'समय' }, unit: 's', defaultValue: 4, min: 0.01 },
+        ],
+        solve: (v) => {
+          const F = num(v, 'F', 40), d = num(v, 'd', 12), th = num(v, 'theta', 30), t = num(v, 't', 4);
+          if (t <= 0) return { error: 'Time t must be > 0.' };
+          const P = (F * d * Math.cos((th * Math.PI) / 180)) / t;
+          return { value: P, substituted: `P = (${F}×${d}×cos ${th}°) / ${t} = ${P.toFixed(2)} W` };
+        },
+      },
+    ],
+  },
+
+  'circular-motion': {
+    simId: 'circular-motion',
+    steps: [
+      {
+        title: { en: 'Linear–Angular Kinematics Link', hi: 'रैखिक–कोणीय वेग संबंध' },
+        equation: 'v = ω · r   |   T = 2π / ω',
+        note: { en: 'Points at larger radius r sweep larger circumferences in the same period T.', hi: 'बड़ी त्रिज्या r पर रैखिक चाल v = ωr अधिक होती है।' },
+      },
+      {
+        title: { en: 'Centripetal Acceleration & Force', hi: 'अभिकेंद्र त्वरण और बल' },
+        equation: 'a_c = v² / r = ω² · r   |   F_c = m · a_c = m · ω² · r',
+        note: { en: 'Always points radially inward at 90° to instantaneous velocity v⃗.', hi: 'यह सदैव वेग के लंबवत और वृत्त के केंद्र की ओर लगता है।' },
+      },
+    ],
+    solvers: [
+      {
+        id: 'Fc',
+        targetSymbol: 'F_c',
+        targetLabel: { en: 'Centripetal Force (F_c)', hi: 'अभिकेंद्र बल (F_c)' },
+        unit: 'N',
+        rearrangedFormula: 'F_c = m · ω² · r',
+        inputs: [
+          { key: 'm', symbol: 'm', label: { en: 'Mass', hi: 'द्रव्यमान' }, unit: 'kg', defaultValue: 2, min: 0.01 },
+          { key: 'r', symbol: 'r', label: { en: 'Radius', hi: 'त्रिज्या' }, unit: 'm', defaultValue: 4, min: 0.05 },
+          { key: 'omega', symbol: 'ω', label: { en: 'Angular Speed', hi: 'कोणीय वेग' }, unit: 'rad/s', defaultValue: 2.5 },
+        ],
+        solve: (v) => {
+          const m = num(v, 'm', 2), r = num(v, 'r', 4), w = num(v, 'omega', 2.5);
+          const Fc = m * w * w * r;
+          return { value: Fc, substituted: `F_c = ${m} × ${w}² × ${r} = ${Fc.toFixed(2)} N` };
+        },
+      },
+      {
+        id: 'ac',
+        targetSymbol: 'a_c',
+        targetLabel: { en: 'Centripetal Acceleration (a_c)', hi: 'अभिकेंद्र त्वरण (a_c)' },
+        unit: 'm/s²',
+        rearrangedFormula: 'a_c = ω² · r',
+        inputs: [
+          { key: 'r', symbol: 'r', label: { en: 'Radius', hi: 'त्रिज्या' }, unit: 'm', defaultValue: 4, min: 0.05 },
+          { key: 'omega', symbol: 'ω', label: { en: 'Angular Speed', hi: 'कोणीय वेग' }, unit: 'rad/s', defaultValue: 2.5 },
+        ],
+        solve: (v) => {
+          const r = num(v, 'r', 4), w = num(v, 'omega', 2.5);
+          const ac = w * w * r;
+          return { value: ac, substituted: `a_c = ${w}² × ${r} = ${ac.toFixed(2)} m/s²` };
+        },
+      },
+      {
+        id: 'v',
+        targetSymbol: 'v',
+        targetLabel: { en: 'Tangential Speed (v = ωr)', hi: 'स्पर्शरेखीय चाल (v)' },
+        unit: 'm/s',
+        rearrangedFormula: 'v = ω · r',
+        inputs: [
+          { key: 'r', symbol: 'r', label: { en: 'Radius', hi: 'त्रिज्या' }, unit: 'm', defaultValue: 4, min: 0.05 },
+          { key: 'omega', symbol: 'ω', label: { en: 'Angular Speed', hi: 'कोणीय वेग' }, unit: 'rad/s', defaultValue: 2.5 },
+        ],
+        solve: (v) => {
+          const r = num(v, 'r', 4), w = num(v, 'omega', 2.5);
+          const spd = w * r;
+          return { value: spd, substituted: `v = ${w} × ${r} = ${spd.toFixed(2)} m/s` };
+        },
+      },
+    ],
+  },
+
+  'density-buoyancy': {
+    simId: 'density-buoyancy',
+    steps: [
+      {
+        title: { en: 'Hydrostatic Gauge Pressure at Depth h', hi: 'गहराई h पर द्रव दाब' },
+        equation: 'P = P₀ + ρ_fluid · g · h   (ΔP = ρ_fluid · g · h)',
+        note: { en: 'Pressure increases linearly with depth h and fluid density ρ_fluid.', hi: 'गहराई h और घनत्व के साथ द्रव दाब रैखिक रूप से बढ़ता है।' },
+      },
+      {
+        title: { en: 'Archimedes Buoyant Force & Floating Fraction', hi: 'आर्किमिडीज़ उत्प्लावन बल' },
+        equation: 'F_b = ρ_fluid · V_sub · g   |   V_sub / V = min(1, ρ_obj / ρ_fluid)',
+        note: { en: 'Floating bodies displace fluid equal to their own weight (F_b = m·g).', hi: 'तैरता पिंड अपने भार के बराबर द्रव विस्थापित करता है।' },
+      },
+    ],
+    solvers: [
+      {
+        id: 'Fb',
+        targetSymbol: 'F_b',
+        targetLabel: { en: 'Buoyant Force (F_b)', hi: 'उत्प्लावन बल (F_b)' },
+        unit: 'N',
+        rearrangedFormula: 'F_b = ρ_f · V_sub · g',
+        inputs: [
+          { key: 'rhoObj', symbol: 'ρ_obj', label: { en: 'Object Density', hi: 'पिंड घनत्व' }, unit: 'kg/m³', defaultValue: 750, min: 1 },
+          { key: 'rhoFluid', symbol: 'ρ_f', label: { en: 'Fluid Density', hi: 'द्रव घनत्व' }, unit: 'kg/m³', defaultValue: 1000, min: 1 },
+          { key: 'vol', symbol: 'V', label: { en: 'Volume', hi: 'आयतन' }, unit: 'm³', defaultValue: 0.05, min: 0.001 },
+        ],
+        solve: (v) => {
+          const ro = num(v, 'rhoObj', 750), rf = num(v, 'rhoFluid', 1000), V = num(v, 'vol', 0.05);
+          if (rf <= 0) return { error: 'Fluid density must be > 0.' };
+          const subFrac = Math.min(1, Math.max(0, ro / rf));
+          const Fb = rf * (V * subFrac) * 9.8;
+          return { value: Fb, substituted: `F_b = ${rf} × ${(V * subFrac).toFixed(4)} × 9.8 = ${Fb.toFixed(1)} N` };
+        },
+      },
+      {
+        id: 'dP',
+        targetSymbol: 'ΔP',
+        targetLabel: { en: 'Hydrostatic Gauge Pressure (ΔP)', hi: 'द्रव गेज दाब (ΔP)' },
+        unit: 'kPa',
+        rearrangedFormula: 'ΔP = ρ_f · g · h',
+        inputs: [
+          { key: 'rhoFluid', symbol: 'ρ_f', label: { en: 'Fluid Density', hi: 'द्रव घनत्व' }, unit: 'kg/m³', defaultValue: 1000, min: 1 },
+          { key: 'depth', symbol: 'h', label: { en: 'Depth', hi: 'गहराई' }, unit: 'm', defaultValue: 2, min: 0 },
+        ],
+        solve: (v) => {
+          const rf = num(v, 'rhoFluid', 1000), h = num(v, 'depth', 2);
+          const dP = (rf * 9.8 * h) / 1000;
+          return { value: dP, substituted: `ΔP = (${rf} × 9.8 × ${h}) / 1000 = ${dP.toFixed(2)} kPa` };
+        },
+      },
+    ],
+  },
+
+  'wave-speed-basic': {
+    simId: 'wave-speed-basic',
+    steps: [
+      {
+        title: { en: 'One Wavelength per Oscillation Period', hi: 'एक आवर्तकाल में एक तरंगदैर्ध्य' },
+        equation: 'v = Distance / Time = λ / T',
+        note: { en: 'Each complete cycle (T = 1/f) shifts the wave crest forward by exactly one wavelength λ.', hi: 'प्रत्येक पूर्ण दोलन T में तरंग ठीक λ दूरी आगे बढ़ती है।' },
+      },
+      {
+        title: { en: 'Universal Wave Equation', hi: 'सार्वत्रिक तरंग समीकरण' },
+        equation: 'v = f · λ   |   ω = 2π·f   |   k = 2π / λ',
+        note: { en: 'Applies to sound, string waves, water waves, and electromagnetic light waves alike!', hi: 'यह ध्वनि, डोरी और प्रकाश सभी तरंगों पर लागू होता है।' },
+      },
+    ],
+    solvers: [
+      {
+        id: 'v',
+        targetSymbol: 'v',
+        targetLabel: { en: 'Wave Speed (v)', hi: 'तरंग वेग (v)' },
+        unit: 'm/s',
+        rearrangedFormula: 'v = f · λ',
+        inputs: [
+          { key: 'f', symbol: 'f', label: { en: 'Frequency', hi: 'आवृत्ति' }, unit: 'Hz', defaultValue: 2, min: 0.01 },
+          { key: 'lam', symbol: 'λ', label: { en: 'Wavelength', hi: 'तरंगदैर्ध्य' }, unit: 'm', defaultValue: 4, min: 0.01 },
+        ],
+        solve: (v) => {
+          const f = num(v, 'f', 2), lam = num(v, 'lam', 4);
+          const spd = f * lam;
+          return { value: spd, substituted: `v = ${f} × ${lam} = ${spd.toFixed(2)} m/s` };
+        },
+      },
+      {
+        id: 'lam',
+        targetSymbol: 'λ',
+        targetLabel: { en: 'Wavelength (λ)', hi: 'तरंगदैर्ध्य (λ)' },
+        unit: 'm',
+        rearrangedFormula: 'λ = v / f',
+        inputs: [
+          { key: 'v', symbol: 'v', label: { en: 'Wave Speed', hi: 'तरंग वेग' }, unit: 'm/s', defaultValue: 8, min: 0.01 },
+          { key: 'f', symbol: 'f', label: { en: 'Frequency', hi: 'आवृत्ति' }, unit: 'Hz', defaultValue: 2, min: 0.001 },
+        ],
+        solve: (v) => {
+          const spd = num(v, 'v', 8), f = num(v, 'f', 2);
+          if (f <= 0) return { error: 'Frequency f must be > 0.' };
+          const lam = spd / f;
+          return { value: lam, substituted: `λ = ${spd} / ${f} = ${lam.toFixed(3)} m` };
+        },
+      },
+      {
+        id: 'f',
+        targetSymbol: 'f',
+        targetLabel: { en: 'Frequency (f)', hi: 'आवृत्ति (f)' },
+        unit: 'Hz',
+        rearrangedFormula: 'f = v / λ',
+        inputs: [
+          { key: 'v', symbol: 'v', label: { en: 'Wave Speed', hi: 'तरंग वेग' }, unit: 'm/s', defaultValue: 8, min: 0.01 },
+          { key: 'lam', symbol: 'λ', label: { en: 'Wavelength', hi: 'तरंगदैर्ध्य' }, unit: 'm', defaultValue: 4, min: 0.001 },
+        ],
+        solve: (v) => {
+          const spd = num(v, 'v', 8), lam = num(v, 'lam', 4);
+          if (lam <= 0) return { error: 'Wavelength λ must be > 0.' };
+          const f = spd / lam;
+          return { value: f, substituted: `f = ${spd} / ${lam} = ${f.toFixed(3)} Hz` };
+        },
+      },
+    ],
+  },
+
+  'charge-current-power': {
+    simId: 'charge-current-power',
+    steps: [
+      {
+        title: { en: 'Electric Current & Charge Quantization', hi: 'विद्युत धारा और आवेश क्वांटमीकरण' },
+        equation: 'Q = I · t = n · e   (e = 1.6 × 10⁻¹⁹ C)',
+        note: { en: '1 Ampere means 1 Coulomb (~6.25×10¹⁸ electrons) passes a cross-section every second.', hi: '1 एम्पियर का अर्थ है प्रति सेकंड 1 कूलॉम आवेश का प्रवाह।' },
+      },
+      {
+        title: { en: 'Joule’s Law of Heating', hi: 'जूल का तापन नियम' },
+        equation: 'P = V · I = I² · R   ⇒   H = P · t = I² · R · t',
+        note: { en: 'Heat rises quadratically with current (∝ I²), which is why power lines transmit at high voltage and low current!', hi: 'ऊष्मा धारा के वर्ग (I²) के समानुपाती होती है।' },
+      },
+    ],
+    solvers: [
+      {
+        id: 'Q',
+        targetSymbol: 'Q',
+        targetLabel: { en: 'Total Charge (Q = It)', hi: 'कुल आवेश (Q)' },
+        unit: 'C',
+        rearrangedFormula: 'Q = I · t',
+        inputs: [
+          { key: 'I', symbol: 'I', label: { en: 'Current', hi: 'धारा' }, unit: 'A', defaultValue: 4, min: 0 },
+          { key: 't', symbol: 't', label: { en: 'Time', hi: 'समय' }, unit: 's', defaultValue: 30, min: 0 },
+        ],
+        solve: (v) => {
+          const I = num(v, 'I', 4), t = num(v, 't', 30);
+          const Q = I * t;
+          return { value: Q, substituted: `Q = ${I} × ${t} = ${Q.toFixed(1)} C` };
+        },
+      },
+      {
+        id: 'H',
+        targetSymbol: 'H',
+        targetLabel: { en: 'Joule Heat Energy (H)', hi: 'जूल ऊष्मा (H)' },
+        unit: 'J',
+        rearrangedFormula: 'H = I² · R · t',
+        inputs: [
+          { key: 'I', symbol: 'I', label: { en: 'Current', hi: 'धारा' }, unit: 'A', defaultValue: 4, min: 0 },
+          { key: 'R', symbol: 'R', label: { en: 'Resistance', hi: 'प्रतिरोध' }, unit: 'Ω', defaultValue: 10, min: 0 },
+          { key: 't', symbol: 't', label: { en: 'Time', hi: 'समय' }, unit: 's', defaultValue: 30, min: 0 },
+        ],
+        solve: (v) => {
+          const I = num(v, 'I', 4), R = num(v, 'R', 10), t = num(v, 't', 30);
+          const H = I * I * R * t;
+          return { value: H, substituted: `H = ${I}² × ${R} × ${t} = ${H.toFixed(1)} J` };
+        },
+      },
+      {
+        id: 'P',
+        targetSymbol: 'P',
+        targetLabel: { en: 'Electrical Power (P)', hi: 'विद्युत शक्ति (P)' },
+        unit: 'W',
+        rearrangedFormula: 'P = I² · R',
+        inputs: [
+          { key: 'I', symbol: 'I', label: { en: 'Current', hi: 'धारा' }, unit: 'A', defaultValue: 4, min: 0 },
+          { key: 'R', symbol: 'R', label: { en: 'Resistance', hi: 'प्रतिरोध' }, unit: 'Ω', defaultValue: 10, min: 0 },
+        ],
+        solve: (v) => {
+          const I = num(v, 'I', 4), R = num(v, 'R', 10);
+          const P = I * I * R;
+          return { value: P, substituted: `P = ${I}² × ${R} = ${P.toFixed(1)} W` };
+        },
+      },
+    ],
+  },
 };
 
-// Automatic fallback spec generator so ALL 51 built-in + custom AI sims have working derivations & solvers
+// Automatic fallback spec generator so ALL 59 built-in + custom AI sims have working derivations & solvers
 function buildFallbackSpec(sim: PhysicsSimulation): FormulaDerivationSpec {
   const mainVar = sim.variables[0];
   const secondVar = sim.variables[1];

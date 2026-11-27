@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  BookOpen,
   Box,
+  Calculator,
   Columns2,
   Compass,
   Contrast,
@@ -29,6 +31,7 @@ import {
   LanguageMode,
   LiveSimTelemetry,
   PhysicsSimulation,
+  SolverStudioTab,
   ThemeMode,
   WhatIfPrompt,
 } from './types/physics';
@@ -43,6 +46,7 @@ import { CustomFormulaLab } from './components/CustomFormulaLab';
 import { FormulaSheetView } from './components/FormulaSheetView';
 import { ChalkboardToolbar } from './components/ChalkboardToolbar';
 import { CompareStage } from './components/CompareStage';
+import { SolverStudioView } from './components/SolverStudioView';
 
 const STORAGE_CUSTOM_SIMS = 'physicalive_custom_sims_v1';
 const STORAGE_POLARITY = 'physicalive_bw_polarity';
@@ -117,6 +121,14 @@ export default function App() {
   const [drawTool, setDrawTool] = useState<DrawingTool>('pen');
   const [drawTone, setDrawTone] = useState<ChalkTone>('primary');
   const [strokes, setStrokes] = useState<ChalkStroke[]>([]);
+
+  // Solver Studio deep-link handoff state
+  const [solverLaunch, setSolverLaunch] = useState<{
+    tab: SolverStudioTab;
+    simId?: string | null;
+    params?: Record<string, number> | null;
+    token: number;
+  }>({ tab: 'equation', simId: null, params: null, token: 0 });
 
   const [toast, setToast] = useState<string | null>(null);
   const proofAnimRef = useRef<number | null>(null);
@@ -208,6 +220,28 @@ export default function App() {
     },
     [selectSimulation]
   );
+
+  const openSolverForActiveSim = useCallback(() => {
+    setIsPresenterMode(false);
+    setSolverLaunch((prev) => ({
+      tab: 'equation',
+      simId: activeSimulation.isCustom ? null : activeSimulation.id,
+      params: { ...params },
+      token: prev.token + 1,
+    }));
+    setView('solver');
+  }, [activeSimulation, params]);
+
+  const openDerivationForActiveSim = useCallback(() => {
+    setIsPresenterMode(false);
+    setSolverLaunch((prev) => ({
+      tab: 'derivations',
+      simId: activeSimulation.isCustom ? null : activeSimulation.id,
+      params: null,
+      token: prev.token + 1,
+    }));
+    setView('solver');
+  }, [activeSimulation]);
 
   const handleParamChange = useCallback((key: string, value: number) => {
     stopProofAnimation();
@@ -356,9 +390,9 @@ export default function App() {
             {(
               [
                 { id: 'simulation', label: UI_TEXT.simulation },
+                { id: 'solver', label: UI_TEXT.solver },
                 { id: 'chapters', label: UI_TEXT.chapters },
                 { id: 'practice', label: UI_TEXT.practice },
-                { id: 'custom', label: UI_TEXT.customFormula },
                 { id: 'sheet', label: UI_TEXT.formulaSheet },
               ] as const
             ).map((item) => {
@@ -418,9 +452,9 @@ export default function App() {
             {(
               [
                 { id: 'simulation', label: UI_TEXT.simulation },
+                { id: 'solver', label: UI_TEXT.solver },
                 { id: 'chapters', label: UI_TEXT.chapters },
                 { id: 'practice', label: UI_TEXT.practice },
-                { id: 'custom', label: UI_TEXT.customFormula },
                 { id: 'sheet', label: UI_TEXT.formulaSheet },
               ] as const
             ).map((item) => (
@@ -448,6 +482,21 @@ export default function App() {
 
       {/* Main Content */}
       <main className="flex-1 w-full">
+        {view === 'solver' && !isPresenterMode && (
+          <SolverStudioView
+            language={language}
+            theme={theme}
+            onLanguageChange={setLanguage}
+            onToggleTheme={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}
+            initialTab={solverLaunch.tab}
+            initialSimId={solverLaunch.simId}
+            initialStageParams={solverLaunch.params}
+            launchToken={solverLaunch.token}
+            onLaunchSimulation={selectSimulation}
+            onOpenCustomGenerator={() => setView('custom')}
+          />
+        )}
+
         {view === 'chapters' && !isPresenterMode && (
           <ChapterExplorer
             simulations={BUILTIN_SIMULATIONS}
@@ -820,6 +869,27 @@ export default function App() {
                         <span>{getBilingualPrimary(UI_TEXT.draw, language)}</span>
                       </button>
                     )}
+
+                    {!isPresenterMode && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={openSolverForActiveSim}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg border-2 border-black dark:border-white bg-white dark:bg-black text-black dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors whitespace-nowrap cursor-pointer"
+                        >
+                          <Calculator className="w-3.5 h-3.5" />
+                          <span>{getBilingualPrimary(UI_TEXT.openInSolver, language)}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={openDerivationForActiveSim}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg border-2 border-black dark:border-white bg-white dark:bg-black text-black dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors whitespace-nowrap cursor-pointer"
+                        >
+                          <BookOpen className="w-3.5 h-3.5" />
+                          <span>{getBilingualPrimary(UI_TEXT.fullDerivation, language)}</span>
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -925,6 +995,8 @@ export default function App() {
                     onResetDefaults={handleResetDefaults}
                     onRunProof={handleRunProof}
                     onOpenFullPractice={openPracticeForChapter}
+                    onOpenInFullSolver={openSolverForActiveSim}
+                    onOpenBoardDerivation={openDerivationForActiveSim}
                   />
                 </div>
               )}

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowRight, BookOpen, Search, Trash2 } from 'lucide-react';
+import { ArrowRight, BookOpen, Search, Sparkles, Trash2 } from 'lucide-react';
 import { CHAPTERS } from '../data/simulations';
 import { getQuestionsByChapter } from '../data/questionBank';
 import { LanguageMode, PhysicsSimulation } from '../types/physics';
@@ -27,14 +27,18 @@ export function ChapterExplorer({
   onOpenCustomGenerator,
 }: ChapterExplorerProps) {
   const [query, setQuery] = useState('');
-  const [classFilter, setClassFilter] = useState<'all' | 'Class 11' | 'Class 12'>('all');
+  const [classFilter, setClassFilter] = useState<'all' | 'foundation' | 'Class 11' | 'Class 12'>('all');
 
   const normalizedQuery = query.trim().toLowerCase();
 
   const filteredChapters = useMemo(() => {
     return CHAPTERS.filter((ch) => {
-      if (classFilter !== 'all' && ch.classLevel !== classFilter) return false;
       const chSims = simulations.filter((s) => s.chapterId === ch.id);
+      if (classFilter === 'foundation') {
+        if (!chSims.some((s) => s.isFoundation)) return false;
+      } else if (classFilter !== 'all' && ch.classLevel !== classFilter) {
+        return false;
+      }
       if (!normalizedQuery) return true;
       const chMatch =
         ch.name.en.toLowerCase().includes(normalizedQuery) ||
@@ -61,25 +65,42 @@ export function ChapterExplorer({
           </h1>
           <p className="mt-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-300">
             {language === 'hi'
-              ? 'हर अध्याय में सभी मुख्य NCERT सूत्रों के लाइव 2D/3D सिमुलेशन, व्युत्पत्ति और 12 छात्र अभ्यास प्रश्न शामिल हैं।'
-              : 'Every NCERT Class 11–12 chapter with dedicated live formula simulations, derivations, 3D rigs, and 12 bilingual practice questions.'}
+              ? 'हर अध्याय में बेसिक फ़ाउंडेशन व सभी मुख्य NCERT सूत्रों के लाइव 2D/3D सिमुलेशन, व्युत्पत्ति और 12 छात्र अभ्यास प्रश्न शामिल हैं।'
+              : 'Every NCERT Class 11–12 chapter plus 8 Basic Foundation labs with live 2D/3D simulations, derivations, and 12 bilingual practice questions.'}
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            type="button"
+            onClick={onOpenCustomGenerator}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg bg-black text-white dark:bg-white dark:text-black hover:opacity-85 transition-opacity whitespace-nowrap cursor-pointer"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>{language === 'hi' ? '+ कस्टम AI लैब' : '+ Custom AI Lab'}</span>
+          </button>
+
           <div className="flex items-center gap-1 p-1 rounded-lg border-2 border-black dark:border-white">
-            {(['all', 'Class 11', 'Class 12'] as const).map((lvl) => (
+            {(['all', 'foundation', 'Class 11', 'Class 12'] as const).map((lvl) => (
               <button
                 key={lvl}
                 type="button"
                 onClick={() => setClassFilter(lvl)}
-                className={`px-3.5 py-1.5 text-xs font-bold rounded-md transition-colors whitespace-nowrap cursor-pointer ${
+                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors whitespace-nowrap cursor-pointer ${
                   classFilter === lvl
                     ? 'bg-black text-white dark:bg-white dark:text-black'
                     : 'text-black dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900'
                 }`}
               >
-                {lvl === 'all' ? (language === 'hi' ? 'सभी (29)' : 'All Chapters') : lvl}
+                {lvl === 'all'
+                  ? language === 'hi'
+                    ? 'सभी (29)'
+                    : 'All Chapters'
+                  : lvl === 'foundation'
+                    ? language === 'hi'
+                      ? 'बेसिक (8)'
+                      : 'Basic Foundation'
+                    : lvl}
               </button>
             ))}
           </div>
@@ -203,7 +224,10 @@ export function ChapterExplorer({
               </div>
 
               <div className="space-y-2.5 pt-3 border-t-2 border-neutral-300 dark:border-neutral-700">
-                {chapterSims.map((sim) => {
+                {(classFilter === 'foundation'
+                  ? chapterSims.filter((s) => s.isFoundation)
+                  : chapterSims
+                ).map((sim) => {
                   const isActive = sim.id === activeSimId;
                   return (
                     <button
@@ -219,6 +243,9 @@ export function ChapterExplorer({
                       <div className="min-w-0">
                         <div className="text-sm font-bold truncate">
                           {getBilingualPrimary(sim.title, language)}
+                          {sim.isFoundation && (
+                            <span className="ml-1.5 font-mono text-xs opacity-80">· Basic</span>
+                          )}
                           {sim.supports3D && (
                             <span className="ml-1.5 font-mono text-xs opacity-80">· 3D</span>
                           )}

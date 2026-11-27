@@ -12,6 +12,7 @@ import { formatPhysicsNumber } from '../utils/mathParser';
 import { stepAndRenderExtendedSim } from './extendedEngines';
 import { stepAndRenderRemaining11 } from './remainingEngines11';
 import { stepAndRenderRemaining12 } from './remainingEngines12';
+import { stepAndRenderFoundationSim } from './foundationEngines';
 
 export interface SimRenderContext {
   ctx: CanvasRenderingContext2D;
@@ -48,6 +49,7 @@ export function stepAndRenderBuiltinSim(rc: SimRenderContext): LiveSimTelemetry 
 
   let telemetry: LiveSimTelemetry;
   const extendedTelemetry =
+    stepAndRenderFoundationSim(rc, palette) ??
     stepAndRenderExtendedSim(rc, palette) ??
     stepAndRenderRemaining11(rc, palette) ??
     stepAndRenderRemaining12(rc, palette);

@@ -234,6 +234,148 @@ app.post('/api/generate-simulation', async (req, res) => {
   }
 });
 
+const WORD_PROBLEM_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    problemSummaryEn: {
+      type: Type.STRING,
+      description: 'Short 1-sentence English restatement of what the problem asks to find.',
+    },
+    problemSummaryHi: {
+      type: Type.STRING,
+      description: 'Short 1-sentence Hindi Devanagari restatement of what the problem asks to find.',
+    },
+    chapterEn: { type: Type.STRING, description: 'NCERT Class 11 or 12 Physics chapter name in English.' },
+    chapterHi: { type: Type.STRING, description: 'NCERT Class 11 or 12 Physics chapter name in Hindi.' },
+    relatedSimId: {
+      type: Type.STRING,
+      description:
+        'Optional best-matching simulation ID from PhysicaLive if applicable (e.g. speed-velocity, motion-1d, projectile, newtons-force, banking-roads, atwood-pulley, work-energy, work-power-basic, linear-momentum, impulse-momentum, angular-momentum, moment-of-inertia, rolling-incline, circular-motion, gravitation, escape-velocity, keplers-laws, fluids, density-buoyancy, thermodynamics, carnot-engine, shm-spring, simple-pendulum, wave-speed-basic, doppler-effect, coulombs-law, capacitance, ohms-law, charge-current-power, lorentz-force, emi, transformer, ac-circuits, thin-lens, snell-prism-tir, wave-optics, dual-nature, atoms, nuclei). Leave empty string if none matches.',
+    },
+    givens: {
+      type: Type.ARRAY,
+      description: 'All given physical quantities extracted from the question with explicit SI conversions.',
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          symbol: { type: Type.STRING, description: 'Physics symbol, e.g. u, v, m, r, t, R, I.' },
+          labelEn: { type: Type.STRING },
+          labelHi: { type: Type.STRING },
+          rawValue: { type: Type.STRING, description: 'Value as given in the problem, e.g. 72 km/h.' },
+          siValue: { type: Type.STRING, description: 'Converted SI value, e.g. 20 m/s.' },
+          conversionNote: {
+            type: Type.STRING,
+            description: 'Short conversion rule if converted (e.g. 72 × 5/18 = 20 m/s), or "Already in SI".',
+          },
+        },
+        required: ['symbol', 'labelEn', 'labelHi', 'rawValue', 'siValue', 'conversionNote'],
+      },
+    },
+    formulaUsed: { type: Type.STRING, description: 'Primary NCERT formula used, e.g. v² = u² + 2as.' },
+    rearrangedFormula: {
+      type: Type.STRING,
+      description: 'Formula rearranged to isolate the unknown variable, e.g. a = (v² − u²) / (2s).',
+    },
+    steps: {
+      type: Type.ARRAY,
+      description: '3 to 6 crisp, numbered board calculation steps with full numeric substitution.',
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          stepTitleEn: { type: Type.STRING },
+          stepTitleHi: { type: Type.STRING },
+          equation: { type: Type.STRING, description: 'Monospace equation / calculation line for the chalkboard.' },
+          explanationEn: { type: Type.STRING },
+          explanationHi: { type: Type.STRING },
+        },
+        required: ['stepTitleEn', 'stepTitleHi', 'equation', 'explanationEn', 'explanationHi'],
+      },
+    },
+    dimensionalCheck: {
+      type: Type.STRING,
+      description: 'Explicit dimensional consistency check, e.g. LHS [L T⁻²] = RHS [L² T⁻²] / [L] = [L T⁻²] (Verified).',
+    },
+    finalAnswer: { type: Type.STRING, description: 'Final numeric answer cleanly formatted, e.g. 11.2 or 4.5 × 10³.' },
+    finalUnit: { type: Type.STRING, description: 'SI or requested unit of the final answer, e.g. m/s², N, J, km/s.' },
+    keyTakeawayEn: { type: Type.STRING, description: '1-sentence exam tip or sanity check in English.' },
+    keyTakeawayHi: { type: Type.STRING, description: '1-sentence exam tip or sanity check in Hindi.' },
+  },
+  required: [
+    'problemSummaryEn',
+    'problemSummaryHi',
+    'chapterEn',
+    'chapterHi',
+    'relatedSimId',
+    'givens',
+    'formulaUsed',
+    'rearrangedFormula',
+    'steps',
+    'dimensionalCheck',
+    'finalAnswer',
+    'finalUnit',
+    'keyTakeawayEn',
+    'keyTakeawayHi',
+  ],
+};
+
+app.post('/api/solve-physics', async (req, res) => {
+  const problem = typeof req.body?.problem === 'string' ? req.body.problem.trim() : '';
+  if (!problem || problem.length < 5) {
+    res.status(400).json({ error: 'Please enter a physics numerical problem or equation to solve.' });
+    return;
+  }
+  if (problem.length > 1200) {
+    res.status(400).json({ error: 'Problem text is too long. Please keep it under 1200 characters.' });
+    return;
+  }
+
+  const ai = createGeminiClient();
+  if (!ai) {
+    res.status(503).json({
+      error: 'Gemini API key is not configured on the server. Please configure GEMINI_API_KEY in Settings > Secrets.',
+    });
+    return;
+  }
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-4-hydrogen',
+      contents: `Solve this Class 11-12 physics numerical problem step-by-step for a classroom chalkboard:\n\n${problem}`,
+      config: {
+        systemInstruction:
+          'You are an expert Indian Class 11-12 NCERT Physics teacher solving numericals live on a classroom board. Follow strict rules: (1) Convert all non-SI givens to SI units transparently and show exact arithmetic; (2) Double-check every calculation carefully so the final numerical answer is 100% accurate (use g = 9.8 m/s² unless the problem states g = 10 m/s²); (3) Use clean Unicode math symbols (×, ÷, −, ², ³, √, π, θ, ω, Δ, ε₀, μ₀) instead of raw LaTeX backslashes; (4) Provide both clear English and natural Hindi Devanagari text for every label and explanation; (5) Include a concise dimensional verification line.',
+        responseMimeType: 'application/json',
+        responseSchema: WORD_PROBLEM_SCHEMA,
+      },
+    });
+
+    const rawText = (response.text ?? '').trim();
+    if (!rawText) {
+      res.status(502).json({ error: 'Empty response returned from Gemini model.' });
+      return;
+    }
+
+    const parsed = JSON.parse(rawText);
+    res.json({ solution: parsed });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to solve physics problem.';
+    const lower = message.toLowerCase();
+    if (lower.includes('api_key_invalid') || lower.includes('permission_denied') || lower.includes('403')) {
+      res.status(403).json({
+        error: 'Gemini API key error. Please verify your API key in Settings > Secrets.',
+      });
+      return;
+    }
+    if (lower.includes('resource_exhausted') || lower.includes('429')) {
+      res.status(429).json({
+        error: 'Rate limit reached for the Gemini API. Please wait a moment and try again.',
+      });
+      return;
+    }
+    res.status(500).json({ error: `Could not solve problem: ${message}` });
+  }
+});
+
 async function startServer() {
   const isProd = process.env.NODE_ENV === 'production';
 

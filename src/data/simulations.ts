@@ -2,6 +2,7 @@ import { BilingualText, ChapterInfo, PhysicsSimulation } from '../types/physics'
 import { EXTRA_SIMULATIONS } from './simulationsExtra';
 import { REMAINING_SIMULATIONS_11 } from './simulationsRemaining11';
 import { REMAINING_SIMULATIONS_12 } from './simulationsRemaining12';
+import { FOUNDATION_SIMULATIONS } from './simulationsFoundation';
 
 export const CHAPTERS: ChapterInfo[] = [
   // ================= CLASS 11 (15 CHAPTERS) =================
@@ -1592,12 +1593,13 @@ const CORE_SIMULATIONS: PhysicsSimulation[] = [
   },
 ];
 
-// Order all 51 built-in simulations cleanly to match CHAPTERS order (Class 11 Ch 01–15 → Class 12 Ch 16–29)
+// Order all 59 built-in simulations cleanly to match CHAPTERS order (Class 11 Ch 01–15 → Class 12 Ch 16–29)
 const ALL_RAW_SIMS: PhysicsSimulation[] = [
   ...CORE_SIMULATIONS,
   ...EXTRA_SIMULATIONS,
   ...REMAINING_SIMULATIONS_11,
   ...REMAINING_SIMULATIONS_12,
+  ...FOUNDATION_SIMULATIONS,
 ];
 const chapterOrderMap = new Map(CHAPTERS.map((c, idx) => [c.id, idx]));
 export const BUILTIN_SIMULATIONS: PhysicsSimulation[] = [...ALL_RAW_SIMS].sort(

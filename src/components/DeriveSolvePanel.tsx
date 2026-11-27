@@ -1,19 +1,23 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Calculator, ChevronRight, Eye, RefreshCw, RotateCcw } from 'lucide-react';
+import { BookOpen, Calculator, ChevronRight, Eye, RefreshCw, RotateCcw } from 'lucide-react';
 import { LanguageMode, PhysicsSimulation } from '../types/physics';
 import { getDerivationSpec } from '../data/derivationsRegistry';
-import { getBilingualPrimary, getBilingualSecondary } from '../utils/bilingual';
+import { getBilingualPrimary, getBilingualSecondary, UI_TEXT } from '../utils/bilingual';
 
 interface DeriveSolvePanelProps {
   simulation: PhysicsSimulation;
   stageParams: Record<string, number>;
   language: LanguageMode;
+  onOpenInFullSolver?: () => void;
+  onOpenBoardDerivation?: () => void;
 }
 
 export function DeriveSolvePanel({
   simulation,
   stageParams,
   language,
+  onOpenInFullSolver,
+  onOpenBoardDerivation,
 }: DeriveSolvePanelProps) {
   const spec = useMemo(() => getDerivationSpec(simulation), [simulation]);
   const [revealedCount, setRevealedCount] = useState(1);
@@ -70,6 +74,31 @@ export function DeriveSolvePanel({
 
   return (
     <div className="space-y-6">
+      {(onOpenInFullSolver || onOpenBoardDerivation) && (
+        <div className="flex flex-wrap items-center gap-2 pb-4 border-b-2 border-neutral-300 dark:border-neutral-800">
+          {onOpenInFullSolver && (
+            <button
+              type="button"
+              onClick={onOpenInFullSolver}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-black text-white dark:bg-white dark:text-black hover:opacity-85 transition-opacity whitespace-nowrap cursor-pointer"
+            >
+              <Calculator className="w-3.5 h-3.5" />
+              <span>{getBilingualPrimary(UI_TEXT.openInSolver, language)}</span>
+            </button>
+          )}
+          {onOpenBoardDerivation && (
+            <button
+              type="button"
+              onClick={onOpenBoardDerivation}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border-2 border-black dark:border-white text-black dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-colors whitespace-nowrap cursor-pointer"
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>{getBilingualPrimary(UI_TEXT.fullDerivation, language)}</span>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* PART A: Step-by-Step Board Derivation */}
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">

@@ -5,7 +5,54 @@ export interface BilingualText {
 
 export type LanguageMode = 'en' | 'hi' | 'dual';
 export type ThemeMode = 'dark' | 'light';
-export type AppView = 'simulation' | 'chapters' | 'practice' | 'custom' | 'sheet';
+export type AppView = 'simulation' | 'solver' | 'chapters' | 'practice' | 'custom' | 'sheet';
+
+export type SolverStudioGroup = 'solve-derive' | 'boards' | 'teaching';
+export type SolverStudioTab =
+  | 'equation'
+  | 'derivations'
+  | 'dimensions'
+  | 'units'
+  | 'practical'
+  | 'vectors-fbd'
+  | 'optics-ray'
+  | 'circuits-logic'
+  | 'mistakes'
+  | 'exam-paper';
+
+export interface AIWordProblemGiven {
+  symbol: string;
+  labelEn: string;
+  labelHi: string;
+  rawValue: string;
+  siValue: string;
+  conversionNote: string;
+}
+
+export interface AIWordProblemStep {
+  stepTitleEn: string;
+  stepTitleHi: string;
+  equation: string;
+  explanationEn: string;
+  explanationHi: string;
+}
+
+export interface AIWordProblemSolution {
+  problemSummaryEn: string;
+  problemSummaryHi: string;
+  chapterEn: string;
+  chapterHi: string;
+  relatedSimId?: string;
+  givens: AIWordProblemGiven[];
+  formulaUsed: string;
+  rearrangedFormula: string;
+  steps: AIWordProblemStep[];
+  dimensionalCheck: string;
+  finalAnswer: string;
+  finalUnit: string;
+  keyTakeawayEn: string;
+  keyTakeawayHi: string;
+}
 
 export type AccentKind = 'force' | 'velocity' | 'momentum' | 'energy';
 
@@ -91,6 +138,7 @@ export interface PhysicsSimulation {
   chapterId: string;
   chapterName?: BilingualText;
   shortTabLabel?: BilingualText;
+  isFoundation?: boolean;
   isCustom?: boolean;
   supports3D?: boolean;
   default3D?: boolean;

@@ -13,9 +13,12 @@ export function getBilingualSecondary(text: BilingualText, lang: LanguageMode): 
 export const UI_TEXT = {
   chapters: { en: 'Chapters', hi: 'अध्याय' },
   simulation: { en: 'Simulation', hi: 'सिमुलेशन' },
+  solver: { en: 'Solver', hi: 'सॉल्वर व टूल्स' },
   practice: { en: 'Practice', hi: 'अभ्यास प्रश्न' },
-  customFormula: { en: 'Custom Formula', hi: 'कस्टम फ़ॉर्मूला' },
+  customFormula: { en: 'Custom AI Lab', hi: 'कस्टम AI लैब' },
   formulaSheet: { en: 'Formula Sheet', hi: 'फ़ॉर्मूला शीट' },
+  openInSolver: { en: 'Open in Solver', hi: 'सॉल्वर में खोलें' },
+  fullDerivation: { en: 'Board Derivation', hi: 'बोर्ड व्युत्पत्ति' },
   presenterMode: { en: 'Presenter Mode', hi: 'प्रेज़ेंटर मोड' },
   exitPresenter: { en: 'Exit Presenter', hi: 'प्रेज़ेंटर बंद करें' },
   play: { en: 'Play', hi: 'चलाएँ' },

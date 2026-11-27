@@ -16,11 +16,13 @@ export function FormulaSheetView({
   onLaunchSimulation,
 }: FormulaSheetViewProps) {
   const [search, setSearch] = useState('');
-  const [classFilter, setClassFilter] = useState<'all' | 'Class 11' | 'Class 12'>('all');
+  const [classFilter, setClassFilter] = useState<'all' | 'foundation' | 'Class 11' | 'Class 12'>('all');
   const q = search.trim().toLowerCase();
 
   const filtered = allSimulations.filter((sim) => {
-    if (classFilter !== 'all') {
+    if (classFilter === 'foundation') {
+      if (!sim.isFoundation) return false;
+    } else if (classFilter !== 'all') {
       const ch = CHAPTERS.find((c) => c.id === sim.chapterId);
       if (!ch || ch.classLevel !== classFilter) return false;
     }
@@ -41,8 +43,8 @@ export function FormulaSheetView({
     const ch = CHAPTERS.find((c) => c.id === sim.chapterId);
     if (!ch) return '';
     return `${ch.number}. ${getBilingualPrimary(ch.name, language)} · ${ch.classLevel}${
-      sim.supports3D ? ' · 3D' : ''
-    }`;
+      sim.isFoundation ? ' · Basic' : ''
+    }${sim.supports3D ? ' · 3D' : ''}`;
   };
 
   return (
@@ -89,7 +91,7 @@ export function FormulaSheetView({
           </button>
 
           <div className="flex items-center gap-1 p-1 rounded-lg border-2 border-black dark:border-white">
-            {(['all', 'Class 11', 'Class 12'] as const).map((lvl) => (
+            {(['all', 'foundation', 'Class 11', 'Class 12'] as const).map((lvl) => (
               <button
                 key={lvl}
                 type="button"
@@ -100,7 +102,15 @@ export function FormulaSheetView({
                     : 'text-black dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900'
                 }`}
               >
-                {lvl === 'all' ? (language === 'hi' ? 'सभी' : 'All') : lvl}
+                {lvl === 'all'
+                  ? language === 'hi'
+                    ? 'सभी'
+                    : 'All'
+                  : lvl === 'foundation'
+                    ? language === 'hi'
+                      ? 'बेसिक (8)'
+                      : 'Basic (8)'
+                    : lvl}
               </button>
             ))}
           </div>

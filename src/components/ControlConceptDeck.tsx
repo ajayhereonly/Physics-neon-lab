@@ -35,6 +35,8 @@ interface ControlConceptDeckProps {
   onResetDefaults: () => void;
   onRunProof: (prompt: WhatIfPrompt) => void;
   onOpenFullPractice?: (chapterId: string) => void;
+  onOpenInFullSolver?: () => void;
+  onOpenBoardDerivation?: () => void;
 }
 
 export function ControlConceptDeck({
@@ -49,6 +51,8 @@ export function ControlConceptDeck({
   onResetDefaults,
   onRunProof,
   onOpenFullPractice,
+  onOpenInFullSolver,
+  onOpenBoardDerivation,
 }: ControlConceptDeckProps) {
   const [deckTab, setDeckTab] = useState<'whatif' | 'concept' | 'derive' | 'practice'>('whatif');
   const [revealedHints, setRevealedHints] = useState<Record<string, boolean>>({});
@@ -396,6 +400,8 @@ export function ControlConceptDeck({
               simulation={simulation}
               stageParams={params}
               language={language}
+              onOpenInFullSolver={onOpenInFullSolver}
+              onOpenBoardDerivation={onOpenBoardDerivation}
             />
           ) : (
             (() => {
